@@ -175,4 +175,5 @@ dist
 wrangler.toml
 # Ignore all wrangler.toml files
 **/wrangler.toml
-
+# Ignore all wrangler.toml files in any subdirectory
+instructions.txt
