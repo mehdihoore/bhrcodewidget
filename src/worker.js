@@ -69,11 +69,13 @@ async function getAllChatHistory(db, sessionId) {
 	if (!sessionId) return [];
 	try {
 		console.log(`Worker: Fetching ALL messages for session: ${sessionId}`);
-		const stmt = db.prepare(
-			`SELECT message_id, role, content, timestamp FROM chat_history
+		const stmt = db
+			.prepare(
+				`SELECT message_id, role, content, timestamp FROM chat_history
        WHERE session_id = ?
        ORDER BY timestamp ASC` // Get in chronological order for display
-		).bind(sessionId);
+			)
+			.bind(sessionId);
 		const { results } = await stmt.all();
 		return results || [];
 	} catch (error) {
@@ -97,9 +99,8 @@ async function saveChatMessage(db, sessionId, role, content) {
 // --- Widget HTML/CSS/JS ---
 const renderWidget = () => {
 	// Add base URL dynamically for constructing share links later
-	const widgetBaseUrl = 'https://bhrwidget.aihoore.ir'; 
-	// Combined HTML for Chat and Vector Search within the widget
-	return html`
+	const widgetBaseUrl = 'https://bhrwidget.aihoore.ir';
+	const newLocal = `
 		<!DOCTYPE html>
 		<html lang="fa" dir="rtl">
 			<head>
@@ -505,6 +506,7 @@ const renderWidget = () => {
          }
         /* Initially hide chat input area */
         #chat-input-area.hidden { display: none; }
+		#user-info-form.hidden { display: none; }
         /* --- End User Info Form Styles --- */
 
          /* --- ADDED: Styles for Copy/Share buttons --- */
@@ -585,30 +587,24 @@ const renderWidget = () => {
                  <p id="user-info-note">پر کردن موارد زیر اختیاری است.</p>
                  <div class="form-grid">
                      <div>
-                         <label for="user-first-name">نام</label>
+                         <label for="user-first-name">نام و نام خانوادگی</label>
                          <input type="text" id="user-first-name" name="firstName">
                      </div>
+                    
                      <div>
-                         <label for="user-last-name">نام خانوادگی</label>
-                         <input type="text" id="user-last-name" name="lastName">
-                     </div>
-                     <div>
-                         <label for="user-phone">تلفن</label>
+                         <label for="user-phone">تلفن یا ایمیل</label>
                          <input type="tel" id="user-phone" name="phone">
                      </div>
-                     <div>
-                          <label for="user-address">آدرس</label>
-                          <input type="text" id="user-address" name="address">
-                     </div>
+                    
                  </div>
-                 <button id="start-chat-button">شروع گفتگو</button>
+                 <button id="start-chat-button">ذخیره اطلاعات و شروع گفتگو</button>
              </div>
              <!-- End User Info Form -->
-					 <!-- Chat Input Area (Initially Hidden) -->
-             <div id="chat-input-area" class="input-area hidden">
-                <input id="chat-input" type="text" placeholder="سوال خود را برای چت بنویسید..." />
-                <button id="chat-send-button">ارسال</button>
-             </div>
+				<!-- Chat Input Area (Initially Hidden) -->
+              	<div id="chat-input-area" class="input-area hidden">
+                	<input id="chat-input" type="text" placeholder="سوال خود را برای چت بنویسید..." />
+                	<button id="chat-send-button">ارسال</button>
+             	</div>
              <!-- End Chat Input Area -->
         </div>
 
@@ -642,9 +638,9 @@ const renderWidget = () => {
 
 				<script>
 					const md = new markdownit({ breaks: true, linkify: true, typographer: true });
-          const userInfoForm = document.getElementById('user-info-form');
-          const startChatButton = document.getElementById('start-chat-button');
-          const chatInputArea = document.getElementById('chat-input-area');
+          			const userInfoForm = document.getElementById('user-info-form');
+          			const startChatButton = document.getElementById('start-chat-button');
+          			const chatInputArea = document.getElementById('chat-input-area');
 
 					// --- DOM Element References ---
 					const chatInput = document.getElementById('chat-input');
@@ -858,9 +854,12 @@ const renderWidget = () => {
 					function sendMessageToParent(messageType, text) {
 						try {
 							const targetOrigin = window.location.ancestorOrigins[0] || '*';
-							console.log(\`Widget: Sending \${messageType} message to parent (\${targetOrigin}):\`, text);
-							// Use messageType in the object sent
-							window.parent.postMessage({ type: messageType, text: text }, targetOrigin);
+							const messageToSend = {
+							type: messageType,
+							text: data.text // We only need the text for the API now
+							};
+							console.log(\`Widget: Sending message to parent (\${targetOrigin}):\`, messageToSend);
+							window.parent.postMessage(messageToSend, targetOrigin);
 						} catch (err) {
 							console.error('Widget: Error sending message to parent:', err);
 							// Determine error context based on messageType
@@ -874,67 +873,54 @@ const renderWidget = () => {
 					}
 
 					// --- Event Handlers ---
-          // --- NEW: Handle User Info Form Submission ---
-        function handleUserInfoSubmit(event) {
-             event.preventDefault(); // Prevent default form submission
-             const firstName = document.getElementById('user-first-name').value.trim();
-             const lastName = document.getElementById('user-last-name').value.trim();
-             const phone = document.getElementById('user-phone').value.trim();
-             const address = document.getElementById('user-address').value.trim();
+          	// --- NEW: Handle User Info Form Submission ---
+            function handleUserInfoSubmit(event) {
+				event.preventDefault();
+				// You might still want to *read* the values if you plan to use them
+				// immediately for some client-side logic, but we won't store them globally.
+				// const firstName = document.getElementById('user-first-name').value.trim();
+				// console.log("User info submitted (optional fields read but not stored globally)");
 
-             collectedUserInfo = { // Store locally in the widget script's scope
-                  firstName: firstName || null, // Send null if empty
-                  lastName: lastName || null,
-                  phone: phone || null,
-                  address: address || null
-             };
-             console.log("Widget: User info collected:", collectedUserInfo);
+				// --- SET THE FLAG in localStorage ---
+				try {
+					localStorage.setItem(INFO_SUBMITTED_KEY, 'true');
+					console.log("Widget: Set info submitted flag in localStorage.");
+				} catch (e) {
+					console.error("Widget: Error setting item in localStorage", e);
+					// Proceed anyway, but the form might reappear on refresh
+				}
 
-              // Send user info to parent (optional, depends if parent needs it directly)
-             // sendMessageToParent('userInfoCollected', { userInfo: collectedUserInfo });
-
-             // Hide form, show chat
-             userInfoForm.classList.add('hidden');
-             chatInputArea.classList.remove('hidden');
-             chatInput.focus(); // Focus the chat input
-        }
-
+				// Hide form, show chat input
+				userInfoForm.classList.add('hidden');
+				chatInputArea.classList.remove('hidden');
+				chatInput.focus();
+        	}
 					// Modified Chat Handler
+        // MODIFIED: Chat Handler (no longer sends userInfo)
         async function handleSendChat() {
             const message = chatInput.value.trim();
             if (!message || chatProcessing) return;
-
             chatProcessing = true;
-             // Pass raw message text to addChatMessage
             addChatMessage('user', message, message);
             chatInput.value = '';
-            disableInput('chat', true);
-            showError('chat', null);
-            showLoading('chat', true);
+            disableInput('chat', true); showError('chat', null); showLoading('chat', true);
 
-             // Prepare data to send
-             const messageData = { text: message };
-             // Include user info ONLY if we just collected it and haven't sent it yet
-             if (collectedUserInfo) {
-                  messageData.userInfo = collectedUserInfo;
-                  collectedUserInfo = null; // Clear it after sending once
-             }
-
-            sendMessageToParent('chatMessage', messageData); // Send object
+            // Prepare data - ONLY includes text now
+            const messageData = { text: message };
+            sendMessageToParent('chatMessage', messageData); // Send object containing only text
         }
+			async function handleVectorSearch() {
+				const query = searchInput.value.trim();
+				if (!query || searchProcessing) return;
 
-					async function handleVectorSearch() {
-						const query = searchInput.value.trim();
-						if (!query || searchProcessing) return;
+				searchProcessing = true;
+				resultsDiv.innerHTML = '';
+				disableInput('search', true);
+				showError('search', null);
+				showLoading('search', true);
 
-						searchProcessing = true;
-						resultsDiv.innerHTML = '';
-						disableInput('search', true);
-						showError('search', null);
-						showLoading('search', true);
-
-						sendMessageToParent('vectorSearch', query); // Pass 'vectorSearch' as type
-					}
+				sendMessageToParent('vectorSearch', query); // Pass 'vectorSearch' as type
+			}
 
 			// --- Event Listeners ---
 			startChatButton.addEventListener('click', handleUserInfoSubmit);
@@ -1010,10 +996,34 @@ const renderWidget = () => {
 									searchProcessing = false;
 								}
 							});
+							// --- NEW: Initial UI Setup based on localStorage ---
+        function initializeWidgetView() {
+             try {
+                 if (localStorage.getItem(INFO_SUBMITTED_KEY) === 'true') {
+                     console.log("Widget: Info previously submitted flag found. Showing chat input.");
+                     userInfoForm.classList.add('hidden');
+                     chatInputArea.classList.remove('hidden');
+                 } else {
+                      console.log("Widget: No info submitted flag found. Showing info form.");
+                     userInfoForm.classList.remove('hidden'); // Ensure form is visible
+                     chatInputArea.classList.add('hidden'); // Ensure chat is hidden
+                 }
+             } catch (e) {
+                  console.error("Widget: Error accessing localStorage on init", e);
+                  // Default to showing the form if localStorage fails
+                  userInfoForm.classList.remove('hidden');
+                  chatInputArea.classList.add('hidden');
+             }
+        }
+			  // Run initialization logic when the script loads
+        initializeWidgetView();
+        // --- End Initial UI Setup ---
 				</script>
 			</body>
 		</html>
 	`;
+	// Combined HTML for Chat and Vector Search within the widget
+	return htmlnewLocal;
 };
 
 // --- Hono App Setup ---
@@ -1023,29 +1033,27 @@ app.get('/widget', (c) => c.html(renderWidget()));
 
 // CHAT API Endpoint
 app.post('/api/webchat', async (c) => {
-  const db = c.env.DB;
-  const sessionId = c.get('sessionId');
-  let requestData;
-  try {
-    requestData = await c.req.json();
-  } catch (e) {
-    console.error("Worker: Failed to parse request JSON", e);
-    return c.json({ error: 'Invalid request format.' }, 400);
-  }
+	const db = c.env.DB;
+	const sessionId = c.get('sessionId');
+	let requestData;
+	try {
+		requestData = await c.req.json();
+	} catch (e) {
+		console.error('Worker: Failed to parse request JSON', e);
+		return c.json({ error: 'Invalid request format.' }, 400);
+	}
 
-  // Destructure potentially incoming userInfo
-  const { text, userInfo } = requestData;
-  if (typeof text !== 'string' || !text) { // Add check here too
-    console.error(`Worker: Invalid 'text' received in /api/webchat request for session ${sessionId}. Received:`, text);
-    return c.json({ error: 'Invalid message text provided.' }, 400);
-  }
-  if (!sessionId) return c.json({ error: 'Session ID not found.' }, 500);
+	// Destructure potentially incoming userInfo
+	const { text } = requestData;
+	if (typeof text !== 'string' || !text) {
+		// Add check here too
+		console.error(`Worker: Invalid 'text' received in /api/webchat request for session ${sessionId}. Received:`, text);
+		return c.json({ error: 'Invalid message text provided.' }, 400);
+	}
+	if (!sessionId) return c.json({ error: 'Session ID not found.' }, 500);
 
-  // Logging...
-  if (userInfo) { console.log(`Worker: /api/webchat request for session ${sessionId} WITH UserInfo:`, userInfo, `Text: "${text}"`); }
-  else { console.log(`Worker: /api/webchat request for session ${sessionId}: "${text}"`); }
-
-
+	// Logging...
+	console.log(`Worker: /api/webchat request for session ${sessionId}: "${text}"`); // Simplified log
 
 	try {
 		// 1. Fetch Chat History
@@ -1054,67 +1062,65 @@ app.post('/api/webchat', async (c) => {
 		// 2. Perform Web Searches (as before)
 		console.log('Worker: Performing web searches for chat...');
 		const searchResults = { ddg: await ddgSearch(text), sep: await sepSearch(text) };
-		
+
 		console.log('Worker: Web searches for chat complete.');
 
 		// 3. Perform RAG Query (passing history)
 		console.log('Worker: Performing RAG query for chat (with history)...');
-		const { response: botResponseText, astraResults } = await queryGeminiChatWeb( // Renamed to botResponseText for clarity
-		text, // Pass the user text string
-		searchResults,
-		history,
-		userInfo,
-		c.env,
-		text // Pass original text again for originalQuery param
+		const { response: botResponseText, astraResults } = await queryGeminiChatWeb(
+			text,
+			searchResults,
+			history,
+			null, // Pass null for userInfo
+			c.env,
+			text
 		);
 		console.log(`Worker: RAG query complete. Found ${astraResults?.length ?? 0} Astra results.`);
 
-    // 4. Save messages
-    await saveChatMessage(db, sessionId, 'user', text);
-    if (typeof botResponseText === 'string') {
-      await saveChatMessage(db, sessionId, 'bot', botResponseText);
-      console.log(`Worker: Messages saved for session ${sessionId}.`);
-    } else {
-      console.error(`Worker: Bot response was not a string for session ${sessionId}, cannot save to D1. Type: ${typeof botResponseText}`);
-      // Optionally save a placeholder or log more details
-      await saveChatMessage(db, sessionId, 'bot', '[Error: Invalid bot response format]');
-    }
+		// 4. Save messages
+		await saveChatMessage(db, sessionId, 'user', text);
+		if (typeof botResponseText === 'string') {
+			await saveChatMessage(db, sessionId, 'bot', botResponseText);
+		} else {
+			console.error(`Worker: Bot response was not a string for session ${sessionId}, cannot save to D1. Type: ${typeof botResponseText}`);
+			// Optionally save a placeholder or log more details
+			await saveChatMessage(db, sessionId, 'bot', '[Error: Invalid bot response format]');
+		}
 		// 5. Return response
 		return c.json({
 			response: botResponseText,
-			astraResults: astraResults,
-			sessionId: sessionId // Include session ID for the widget
+			astraResults,
+			sessionId,
 		});
-
-  } catch (error) {
-    console.error(`Worker: /api/webchat Error for session ${sessionId}:`, error, error.stack);
-    return c.json({ error: `پردازش چت با خطا مواجه شد: ${error.message || 'Unknown error'}` }, 500);
-  }
+	} catch (error) {
+		console.error(`Worker: /api/webchat Error for session ${sessionId}:`, error, error.stack);
+		return c.json({ error: `پردازش چت با خطا مواجه شد: ${error.message || 'Unknown error'}` }, 500);
+	}
 });
 
 // VECTOR SEARCH API Endpoint
 app.post('/api/widget-search', async (c) => {
-  try {
-    const { text } = await c.req.json(); // Only expect text here
-    console.log(`Widget Worker: /api/widget-search request: "${text}"`);
-    if (!text) return c.json({ error: 'لطفا عبارتی برای جستجو وارد کنید' }, 400);
+	try {
+		const { text } = await c.req.json(); // Only expect text here
+		console.log(`Widget Worker: /api/widget-search request: "${text}"`);
+		if (!text) return c.json({ error: 'لطفا عبارتی برای جستجو وارد کنید' }, 400);
 
-    console.log("Widget Worker: Generating embedding for vector search...");
-    // --- CORRECTION: Pass ONLY the text string ---
-    const embedding = await generateEmbedding(text, c.env);
-    // --- End Correction ---
+		console.log('Widget Worker: Generating embedding for vector search...');
+		// --- CORRECTION: Pass ONLY the text string ---
+		const embedding = await generateEmbedding(text, c.env);
+		// --- End Correction ---
 
-    if (!embedding) return c.json({ error: 'خطا در تولید بردار جستجو.' }, 500);
-    console.log(`Widget Worker: Embedding generated (dimension: ${embedding.length})`);
+		if (!embedding) return c.json({ error: 'خطا در تولید بردار جستجو.' }, 500);
+		console.log(`Widget Worker: Embedding generated (dimension: ${embedding.length})`);
 
-    console.log("Widget Worker: Searching AstraDB with vector...");
-    const results = await searchAstraDB(embedding, c.env);
-    console.log(`Widget Worker: AstraDB vector search found ${results.length} results.`);
-    return c.json(results);
-  } catch (error) {
-    console.error('Widget Worker: /api/widget-search Error:', error, error.stack);
-    return c.json({ error: `جستجوی برداری با خطا مواجه شد: ${error.message || 'Unknown error'}` }, 500);
-  }
+		console.log('Widget Worker: Searching AstraDB with vector...');
+		const results = await searchAstraDB(embedding, c.env);
+		console.log(`Widget Worker: AstraDB vector search found ${results.length} results.`);
+		return c.json(results);
+	} catch (error) {
+		console.error('Widget Worker: /api/widget-search Error:', error, error.stack);
+		return c.json({ error: `جستجوی برداری با خطا مواجه شد: ${error.message || 'Unknown error'}` }, 500);
+	}
 });
 
 // --- NEW API Endpoint: Get Full Chat History ---
@@ -1143,20 +1149,23 @@ app.get('/api/get-history/:sessionId', async (c) => {
 
 // Generate Embedding Function
 async function generateEmbedding(text, env) {
-  if (!env.GEMINI_API_KEY_WEB) { console.error("Widget Worker: GEMINI_API_KEY_WEB for embedding not set!"); return null; }
-  if (typeof text !== 'string' || !text) {
-    console.error("Widget Worker: Cannot generate embedding for non-string or empty text. Received:", text);
-    return null; // Return null explicitly
-  }
-  try {
-    const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY_WEB);
-    const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
-    const result = await embeddingModel.embedContent(text); // This expects ONLY the text string
-    return result.embedding.values;
-  } catch (embedError) {
-    console.error("Widget Worker: Error generating embedding for text:", text, embedError); // Log the text that failed
-    return null;
-  }
+	if (!env.GEMINI_API_KEY_WEB) {
+		console.error('Widget Worker: GEMINI_API_KEY_WEB for embedding not set!');
+		return null;
+	}
+	if (typeof text !== 'string' || !text) {
+		console.error('Widget Worker: Cannot generate embedding for non-string or empty text. Received:', text);
+		return null; // Return null explicitly
+	}
+	try {
+		const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY_WEB);
+		const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
+		const result = await embeddingModel.embedContent(text); // This expects ONLY the text string
+		return result.embedding.values;
+	} catch (embedError) {
+		console.error('Widget Worker: Error generating embedding for text:', text, embedError); // Log the text that failed
+		return null;
+	}
 }
 // Search AstraDB Function
 async function searchAstraDB(vector, env) {
@@ -1363,56 +1372,75 @@ async function sepSearch(query) {
 
 // Gemini Chat for Web
 // Gemini Chat for Web (Corrected API Key Usage)
-async function queryGeminiChatWeb(text, searchResults, chatHistory, userInfo, env, originalQuery = null) { // Added chatHistory param
-  // --- CORRECTION: Check for the correct Gemini Web API Key ---
-  if (!env.GEMINI_API_KEY_WEB) {
-    // --- CORRECTION: Log the correct variable name ---
-    console.error("Widget Worker: GEMINI_API_KEY_WEB not set!");
-    return { response: "خطای پیکربندی: کلید API چت وب تنظیم نشده است.", astraResults: [] };
-  }
-  // --- CORRECTION: Assign the correct API Key ---
-  const API_KEY = env.GEMINI_API_KEY_WEB;
-  // --- End Corrections ---
+async function queryGeminiChatWeb(text, searchResults, chatHistory, _userInfo_ignored, env, originalQuery = null) {
+	// Added chatHistory param
+	// --- CORRECTION: Check for the correct Gemini Web API Key ---
+	if (!env.GEMINI_API_KEY_WEB) {
+		// --- CORRECTION: Log the correct variable name ---
+		console.error('Widget Worker: GEMINI_API_KEY_WEB not set!');
+		return { response: 'خطای پیکربندی: کلید API چت وب تنظیم نشده است.', astraResults: [] };
+	}
+	// --- CORRECTION: Assign the correct API Key ---
+	const API_KEY = env.GEMINI_API_KEY_WEB;
+	// --- End Corrections ---
 
-  const MODEL_NAME = "gemini-2.5-pro-exp-03-25"; // Use Flash for potentially faster widget response
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
-  const MAX_RETRIES = 2; const RETRY_DELAY = 800;
+	const MODEL_NAME = 'gemini-2.5-pro-exp-03-25'; // Use Flash for potentially faster widget response
+	const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+	const MAX_RETRIES = 2;
+	const RETRY_DELAY = 800;
 
-  // Format Web Search Results (as before)
-  const formattedSearchResults = Object.entries(searchResults)
-    .filter(([_, results]) => results.length > 0).map(([source, results]) => { const sourceName = source === 'ddg' ? 'DDG' : (source === 'google' ? 'Google' : (source === 'sep' ? 'SEP' : 'Web')); const resultLines = results.map((r, i) => `${i + 1}. **${r.title}**: ${r.description || "_"} [لینک](${r.link})`).join("\n"); return `*نتایج ${sourceName}:*\n${resultLines}`; }).join("\n\n") || "نتایج وب یافت نشد.";
+	// Format Web Search Results (as before)
+	const formattedSearchResults =
+		Object.entries(searchResults)
+			.filter(([_, results]) => results.length > 0)
+			.map(([source, results]) => {
+				const sourceName = source === 'ddg' ? 'DDG' : source === 'google' ? 'Google' : source === 'sep' ? 'SEP' : 'Web';
+				const resultLines = results.map((r, i) => `${i + 1}. **${r.title}**: ${r.description || '_'} [لینک](${r.link})`).join('\n');
+				return `*نتایج ${sourceName}:*\n${resultLines}`;
+			})
+			.join('\n\n') || 'نتایج وب یافت نشد.';
 
-  // Format Chat History for the prompt
-  const formattedHistory = chatHistory && chatHistory.length > 0
-    ? chatHistory.map(msg => `${msg.role}: ${msg.content}`).join('\n')
-    : "هیچ تاریخچه گفتگوی قبلی وجود ندارد.";
+	// Format Chat History for the prompt
+	const formattedHistory =
+		chatHistory && chatHistory.length > 0
+			? chatHistory.map((msg) => `${msg.role}: ${msg.content}`).join('\n')
+			: 'هیچ تاریخچه گفتگوی قبلی وجود ندارد.';
 
-  // Fetch AstraDB docs (as before)
-  let astraDocs = "پایگاه داده جستجو نشد یا نتیجه‌ای نداشت."; let astraResults = [];
-  try {
-    // --- ADD LOGGING & CORRECTION: Use originalQuery for embedding ---
-    const textToEmbed = originalQuery || text; // Prefer originalQuery if available
-    console.log(`Worker: Attempting to generate embedding for text (type: ${typeof textToEmbed}): "${textToEmbed}"`); // Log type and value
-    const embedding = await generateEmbedding(textToEmbed, env); // Use the verified text string
-  // --- End Logging & Correction ---
+	// Fetch AstraDB docs (as before)
+	let astraDocs = 'پایگاه داده جستجو نشد یا نتیجه‌ای نداشت.';
+	let astraResults = [];
+	try {
+		// --- ADD LOGGING & CORRECTION: Use originalQuery for embedding ---
+		const textToEmbed = originalQuery || text; // Prefer originalQuery if available
+		console.log(`Worker: Attempting to generate embedding for text (type: ${typeof textToEmbed}): "${textToEmbed}"`); // Log type and value
+		const embedding = await generateEmbedding(textToEmbed, env); // Use the verified text string
+		// --- End Logging & Correction ---
 
-    if (embedding) {
-      astraResults = await searchAstraDB(embedding, env); // Use the helper function
-      if (astraResults.length > 0) {
-        astraDocs = "نتایج پایگاه داده:\n" + astraResults.map((doc, index) => {
-          return `${index + 1}. **کتاب:** ${doc.metadata?.doc_name || '?'} | **بخش:** ${doc.metadata?.references || '?'} | **شباهت:** ${(doc.$similarity * 100).toFixed(1)}%\n   **متن:** ${doc.content?.substring(0, 200) || '?'}...`; // Shorter context
-        }).join('\n');
-      } else { astraDocs = "سند مرتبطی در پایگاه داده یافت نشد."; }
-    } else { astraDocs = "خطا در پردازش جستجوی پایگاه داده."; }
-  } catch (astraError) { console.error("Worker: Chat AstraDB Error:", astraError); astraDocs = "خطا در جستجوی پایگاه داده."; }
-  let userInfoForPrompt = "کاربر گرامی"; // Default
-  if (userInfo && (userInfo.firstName || userInfo.lastName)) {
-    userInfoForPrompt = `${userInfo.firstName || ''} ${userInfo.lastName || ''}`.trim();
-  } else if (userInfo && userInfo.phone) {
-    userInfoForPrompt = `کاربر با شماره ${userInfo.phone}`; // Example if only phone is provided
-  }
-  const queryForPrompt = originalQuery || text;
-  // --- Build the Final Prompt (INCLUDING HISTORY) ---
+		if (embedding) {
+			astraResults = await searchAstraDB(embedding, env); // Use the helper function
+			if (astraResults.length > 0) {
+				astraDocs =
+					'نتایج پایگاه داده:\n' +
+					astraResults
+						.map((doc, index) => {
+							return `${index + 1}. **کتاب:** ${doc.metadata?.doc_name || '?'} | **بخش:** ${
+								doc.metadata?.references || '?'
+							} | **شباهت:** ${(doc.$similarity * 100).toFixed(1)}%\n   **متن:** ${doc.content?.substring(0, 200) || '?'}...`; // Shorter context
+						})
+						.join('\n');
+			} else {
+				astraDocs = 'سند مرتبطی در پایگاه داده یافت نشد.';
+			}
+		} else {
+			astraDocs = 'خطا در پردازش جستجوی پایگاه داده.';
+		}
+	} catch (astraError) {
+		console.error('Worker: Chat AstraDB Error:', astraError);
+		astraDocs = 'خطا در جستجوی پایگاه داده.';
+	}
+	const userInfoForPrompt = 'کاربر گرامی'; // Revert to default
+	const queryForPrompt = originalQuery || text;
+	// --- Build the Final Prompt (INCLUDING HISTORY) ---
 	const prompt = `
 You are AlumGlass, a highly specialized AI assistant providing expert guidance on Iran's National Building Regulations (Mabhath). Your purpose is to deliver detailed, accurate, and well-reasoned answers based **primarily** on official Iranian standards and supplementary technical documents from your knowledge base. You MUST respond ONLY in PERSIAN (Farsi).
 
@@ -1454,31 +1482,73 @@ You are AlumGlass, a highly specialized AI assistant providing expert guidance o
 *   **Web Search Results (Supplementary - LOWER PRIORITY):**
     ${formattedSearchResults}
     *Cite using format: بر اساس نتیجه جستجوی وب از [منبع] با عنوان '[عنوان]'...*
-
+**Instructions:**
+Based on the **Previous Conversation History** and the **Current User Query**, generate a helpful, accurate, Persian response. Use the **Available Information** to enhance your answer, prioritizing official regulations. Cite sources. State confidence level. Do not mention user information unless they provide it explicitly in the current query.
 **Final Output Instruction:**
 Generate **ONLY** the comprehensive, well-cited, Persian response for the user, following all directives above. Do NOT output your internal thought process, self-review checklist, or comments about the search process for Knowledge Base Documents.
 `;
-  // --- End Prompt Update ---
+	// --- End Prompt Update ---
 
-  const requestBody = { contents: [{ parts: [{ text: prompt }] }], generationConfig: {} };
+	const requestBody = { contents: [{ parts: [{ text: prompt }] }], generationConfig: {} };
 
-  // Make the Gemini API Call (keep retry logic as before)
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody) });
-      if (!response.ok) { /* Error handling as before */
-        const errorText = await response.text(); let errorJson = {}; try { errorJson = JSON.parse(errorText); } catch { } const errorMessage = `Gemini API Error: Status ${response.status}, Msg: ${errorJson.error?.message || errorText}`; console.error(`Worker: ${errorMessage} (Attempt ${attempt})`); if ((response.status === 429 || response.status === 503) && attempt < MAX_RETRIES) { console.log(`Retrying Gemini...`); await new Promise(r => setTimeout(r, RETRY_DELAY * attempt)); continue; } if (response.status === 400) { return { response: `خطای درخواست: ${errorJson.error?.message || 'سوال نامعتبر'}`, astraResults: [] }; } if (attempt === MAX_RETRIES) { return { response: `خطا در ارتباط با سرویس (${response.status})`, astraResults: [] }; } await new Promise(r => setTimeout(r, RETRY_DELAY)); continue;
-      }
-      const data = await response.json(); const candidate = data.candidates?.[0]; let responseText = candidate?.content?.parts?.[0]?.text; const finishReason = candidate?.finishReason;
-      if (!responseText) { /* Finish reason handling as before */
-        if (finishReason === "SAFETY") responseText = "پاسخ به دلیل محدودیت ایمنی مسدود شد."; else if (finishReason === "RECITATION") responseText = "پاسخ به دلیل تکرار محتوای محافظت شده مسدود شد."; else if (finishReason === "MAX_TOKENS") responseText = (candidate?.content?.parts?.[0]?.text || "پاسخ کامل نشد.") + "\n\n[محدودیت طول]"; else { console.error("Worker: No text in Gemini response. Finish:", finishReason); responseText = "پاسخ خالی دریافت شد."; }
-      }
-      return { response: responseText, astraResults: astraResults };
-    } catch (error) { /* ... retry/error handling ... */
-      console.error(`Worker: Gemini Chat Error (Attempt ${attempt}):`, error); if (attempt < MAX_RETRIES) { await new Promise(r => setTimeout(r, RETRY_DELAY)); } else { return { response: "خطا در پردازش درخواست چت.", astraResults: [] }; }
-    }
-  }
-  return { response: "متاسفانه پس از چندین تلاش، پاسخی دریافت نشد.", astraResults: [] }; // Fallback
+	// Make the Gemini API Call (keep retry logic as before)
+	for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+		try {
+			const response = await fetch(url, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(requestBody),
+			});
+			if (!response.ok) {
+				/* Error handling as before */
+				const errorText = await response.text();
+				let errorJson = {};
+				try {
+					errorJson = JSON.parse(errorText);
+				} catch {}
+				const errorMessage = `Gemini API Error: Status ${response.status}, Msg: ${errorJson.error?.message || errorText}`;
+				console.error(`Worker: ${errorMessage} (Attempt ${attempt})`);
+				if ((response.status === 429 || response.status === 503) && attempt < MAX_RETRIES) {
+					console.log(`Retrying Gemini...`);
+					await new Promise((r) => setTimeout(r, RETRY_DELAY * attempt));
+					continue;
+				}
+				if (response.status === 400) {
+					return { response: `خطای درخواست: ${errorJson.error?.message || 'سوال نامعتبر'}`, astraResults: [] };
+				}
+				if (attempt === MAX_RETRIES) {
+					return { response: `خطا در ارتباط با سرویس (${response.status})`, astraResults: [] };
+				}
+				await new Promise((r) => setTimeout(r, RETRY_DELAY));
+				continue;
+			}
+			const data = await response.json();
+			const candidate = data.candidates?.[0];
+			let responseText = candidate?.content?.parts?.[0]?.text;
+			const finishReason = candidate?.finishReason;
+			if (!responseText) {
+				/* Finish reason handling as before */
+				if (finishReason === 'SAFETY') responseText = 'پاسخ به دلیل محدودیت ایمنی مسدود شد.';
+				else if (finishReason === 'RECITATION') responseText = 'پاسخ به دلیل تکرار محتوای محافظت شده مسدود شد.';
+				else if (finishReason === 'MAX_TOKENS')
+					responseText = (candidate?.content?.parts?.[0]?.text || 'پاسخ کامل نشد.') + '\n\n[محدودیت طول]';
+				else {
+					console.error('Worker: No text in Gemini response. Finish:', finishReason);
+					responseText = 'پاسخ خالی دریافت شد.';
+				}
+			}
+			return { response: responseText, astraResults: astraResults };
+		} catch (error) {
+			/* ... retry/error handling ... */
+			console.error(`Worker: Gemini Chat Error (Attempt ${attempt}):`, error);
+			if (attempt < MAX_RETRIES) {
+				await new Promise((r) => setTimeout(r, RETRY_DELAY));
+			} else {
+				return { response: 'خطا در پردازش درخواست چت.', astraResults: [] };
+			}
+		}
+	}
+	return { response: 'متاسفانه پس از چندین تلاش، پاسخی دریافت نشد.', astraResults: [] }; // Fallback
 }
 
 // --- Export the Hono app ---
