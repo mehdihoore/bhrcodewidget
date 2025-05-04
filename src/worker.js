@@ -64,6 +64,23 @@ async function getChatHistory(db, sessionId, limit) {
 		return [];
 	}
 }
+// NEW: Function to get ALL history for a session
+async function getAllChatHistory(db, sessionId) {
+	if (!sessionId) return [];
+	try {
+		console.log(`Worker: Fetching ALL messages for session: ${sessionId}`);
+		const stmt = db.prepare(
+			`SELECT message_id, role, content, timestamp FROM chat_history
+       WHERE session_id = ?
+       ORDER BY timestamp ASC` // Get in chronological order for display
+		).bind(sessionId);
+		const { results } = await stmt.all();
+		return results || [];
+	} catch (error) {
+		console.error(`Worker: Error fetching ALL chat history for session ${sessionId}:`, error);
+		return []; // Return empty array or throw error? Empty array is safer for client.
+	}
+}
 
 async function saveChatMessage(db, sessionId, role, content) {
 	if (!sessionId || !role || !content) return false;
@@ -79,6 +96,8 @@ async function saveChatMessage(db, sessionId, role, content) {
 }
 // --- Widget HTML/CSS/JS ---
 const renderWidget = () => {
+	// Add base URL dynamically for constructing share links later
+	const widgetBaseUrl = 'https://bhrwidget.aihoore.ir'; 
 	// Combined HTML for Chat and Vector Search within the widget
 	return html`
 		<!DOCTYPE html>
@@ -489,18 +508,27 @@ const renderWidget = () => {
         /* --- End User Info Form Styles --- */
 
          /* --- ADDED: Styles for Copy/Share buttons --- */
-         .message-actions {
-             position: absolute;
-             bottom: 5px;
-             left: 10px; /* Position bottom-left */
-             display: flex;
-             gap: 8px;
-             opacity: 0.7; /* Slightly transparent */
-             transition: opacity 0.2s ease-in-out;
-         }
-         .bot-message:hover .message-actions {
-             opacity: 1; /* Fully visible on hover */
-         }
+         #chat-actions-container {
+            position: absolute;
+            top: 10px; /* Position near top */
+            left: 15px; /* Position left (because of RTL default?) - adjust if needed */
+            z-index: 10; /* Ensure above messages */
+            display: flex;
+            gap: 8px;
+            direction: ltr; /* Ensure buttons layout LTR */
+        }
+        #chat-actions-container button { /* Style buttons directly */
+            background-color: #555; color: #eee; border: none; border-radius: 4px;
+            padding: 4px 8px; cursor: pointer; font-size: 0.8em; line-height: 1;
+            transition: background-color 0.2s; display: flex; align-items: center; gap: 4px;
+        }
+        #chat-actions-container button:hover:not(:disabled) { background-color: #666; }
+        #chat-actions-container button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #chat-actions-container button i { margin-right: 0; /* Remove previous margin */ }
+        /* Hide initially */
+        #chat-actions-container.hidden { display: none; }
+        /* --- End Top-Right Action Button Styles --- */
+        
          .message-action-button {
              background-color: #555; /* Darker gray */
              color: #eee;
@@ -526,6 +554,10 @@ const renderWidget = () => {
 					<!-- Chat Section -->
 					<div class="widget-section chat-section">
 						<h2>گفتگو با هوش مصنوعی</h2>
+						<div id="chat-actions-container" class="hidden">
+							<button id="copy-last-button" disabled><i class="fas fa-copy"></i> کپی آخرین پاسخ</button>
+							<button id="share-chat-button" disabled><i class="fas fa-share-alt"></i> اشتراک گفتگو</button>
+						</div>
 						<p class="explanation-text">
 							این دستیار از هوش مصنوعی پیشرفته به همراه جستجو در پایگاه داده تخصصی مباحث مقررات ملی ساختمان (روش RAG) برای ارائه پاسخ‌های
 							دقیق استفاده می‌کند. تاریخچه گفتگو برای بهبود زمینه پاسخ‌ها ذخیره می‌شود.
@@ -626,10 +658,15 @@ const renderWidget = () => {
 					const searchErrorDiv = document.getElementById('search-error');
 					const searchLoadingDiv = document.getElementById('search-loading');
 					const resultsDiv = document.getElementById('results');
+					const chatActionsContainer = document.getElementById('chat-actions-container');
+					const copyLastButton = document.getElementById('copy-last-button');
+					const shareChatButton = document.getElementById('share-chat-button');
 
 					let chatProcessing = false;
 					let searchProcessing = false;
-          let collectedUserInfo = null; // Variable to store user info temporarily
+          			let collectedUserInfo = null; // Variable to store user info temporarily
+					let lastBotMessageRawText = '';
+					let currentSessionId = null; // Will be populated from API response
 
 					// --- Utility Functions ---
 					function showLoading(indicatorType, show) {
@@ -664,88 +701,74 @@ const renderWidget = () => {
 					}
 
 					// --- Message Handling Functions ---
-					 function addChatMessage(sender, message, rawText = '') { // Add rawText parameter
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message-base');
-            messageDiv.dataset.rawText = rawText; // Store raw text for copy/share
+					        // --- Message Handling & Actions ---
+					function addChatMessage(sender, message, rawText = '') {
+						const messageDiv = document.createElement('div');
+						messageDiv.classList.add('message-base');
 
-            if (sender === 'user') {
-                messageDiv.classList.add('user-message');
-                messageDiv.textContent = message;
-            } else if (sender === 'bot') {
-                messageDiv.classList.add('bot-message');
-                messageDiv.innerHTML = message; // Rendered HTML
-                addMessageActions(messageDiv, rawText); // Add copy/share buttons
-            }
+						if (sender === 'user') {
+							messageDiv.classList.add('user-message');
+							messageDiv.textContent = message;
+						} else if (sender === 'bot') {
+							messageDiv.classList.add('bot-message');
+							messageDiv.innerHTML = message; // Rendered HTML
+							// --- MODIFICATION: Don't add actions here anymore ---
+							// addMessageActions(messageDiv, rawText);
+						}
+						// Store raw text on the element itself if needed for other purposes,
+						// but we primarily use the global var now for top-level actions
+						messageDiv.dataset.rawText = rawText;
 
-            chatMessagesDiv.appendChild(messageDiv);
-            chatMessagesDiv.scrollTo({ top: chatMessagesDiv.scrollHeight, behavior: 'smooth' });
-        }
- // --- NEW: Function to add Copy/Share buttons ---
-         function addMessageActions(messageDiv, rawText) {
-             const actionsContainer = document.createElement('div');
-             actionsContainer.className = 'message-actions';
+						chatMessagesDiv.appendChild(messageDiv);
+						chatMessagesDiv.scrollTo({ top: chatMessagesDiv.scrollHeight, behavior: 'smooth' });
+					}
 
-             // Copy Button
-             const copyButton = document.createElement('button');
-             copyButton.className = 'message-action-button copy-button';
-             copyButton.innerHTML = '<i class="fas fa-copy"></i> کپی';
-             copyButton.onclick = () => handleCopy(rawText, copyButton);
-             actionsContainer.appendChild(copyButton);
+					
 
-             // Share Button (only if supported)
-             if (navigator.share) {
-                 const shareButton = document.createElement('button');
-                 shareButton.className = 'message-action-button share-button';
-                 shareButton.innerHTML = '<i class="fas fa-share-alt"></i> اشتراک';
-                 shareButton.onclick = () => handleShare(rawText);
-                 actionsContainer.appendChild(shareButton);
-             }
+         			// --- NEW: Copy Handler ---
+					async function handleCopyLast(buttonElement) {
+						if (!lastBotMessageRawText) return; // Nothing to copy
+						if (!navigator.clipboard) { showError('chat', 'مرورگر شما از کپی در کلیپ‌بورد پشتیبانی نمی‌کند.'); return; }
+						try {
+							await navigator.clipboard.writeText(lastBotMessageRawText);
+							buttonElement.innerHTML = '<i class="fas fa-check"></i> کپی شد!';
+							buttonElement.disabled = true;
+							setTimeout(() => {
+								buttonElement.innerHTML = '<i class="fas fa-copy"></i> کپی آخرین پاسخ';
+								buttonElement.disabled = false;
+							}, 2000);
+						} catch (err) {
+							console.error('Widget: Failed to copy text:', err);
+							showError('chat', 'خطا در کپی متن.');
+							buttonElement.innerHTML = '<i class="fas fa-times"></i> خطا';
+							setTimeout(() => {
+								buttonElement.innerHTML = '<i class="fas fa-copy"></i> کپی';
+							}, 2000);
+						}
+					}
 
-             messageDiv.appendChild(actionsContainer);
-         }
+					// --- NEW: Share Handler ---
+					async function handleShareChat() {
+						if (!currentSessionId) { showError('chat', 'شناسه گفتگو برای اشتراک‌گذاری یافت نشد.'); return; }
+						if (!navigator.share) { showError('chat', 'مرورگر شما از قابلیت اشتراک‌گذاری پشتیبانی نمی‌کند.'); return; }
 
-         // --- NEW: Copy Handler ---
-         async function handleCopy(textToCopy, buttonElement) {
-             if (!navigator.clipboard) {
-                 showError('chat', 'مرورگر شما از کپی در کلیپ‌بورد پشتیبانی نمی‌کند.');
-                 return;
-             }
-             try {
-                 await navigator.clipboard.writeText(textToCopy);
-                 buttonElement.innerHTML = '<i class="fas fa-check"></i> کپی شد!';
-                 buttonElement.disabled = true;
-                 setTimeout(() => {
-                     buttonElement.innerHTML = '<i class="fas fa-copy"></i> کپی';
-                     buttonElement.disabled = false;
-                 }, 2000); // Reset after 2 seconds
-             } catch (err) {
-                 console.error('Widget: Failed to copy text:', err);
-                 showError('chat', 'خطا در کپی متن.');
-                 buttonElement.innerHTML = '<i class="fas fa-times"></i> خطا';
-                  setTimeout(() => {
-                     buttonElement.innerHTML = '<i class="fas fa-copy"></i> کپی';
-                 }, 2000);
-             }
-         }
+						// --- CONSTRUCT THE SHARE URL ---
+						// Option 1: Link to a dedicated history page on your main site
+						const shareUrl = \`https://alumglass.com/chat-view?session=\${currentSessionId}\`;
+						// Option 2: Link directly to a potential history API endpoint (less user-friendly)
+						// const shareUrl = \`\${widgetBaseUrl}/api/get-history/\${currentSessionId}\`;
 
-         // --- NEW: Share Handler ---
-          async function handleShare(textToShare) {
-             try {
-                 await navigator.share({
-                     title: 'پاسخ از مشاور AlumGlass',
-                     text: textToShare,
-                     // url: window.location.href // Optional: share the page URL too
-                 });
-                 console.log('Widget: Content shared successfully');
-             } catch (err) {
-                  // User might cancel the share, which isn't really an error
-                 if (err.name !== 'AbortError') {
-                      console.error('Widget: Error sharing content:', err);
-                      showError('chat', 'خطا در اشتراک‌گذاری محتوا.');
-                 }
-             }
-         }
+						const shareData = {
+							title: 'گفتگو با مشاور AlumGlass',
+							text: \`خلاصه گفتگو با مشاور AlumGlass. آخرین پاسخ: \${lastBotMessageRawText.substring(0, 100)}...\`, // Share snippet
+							url: shareUrl // Share the link to the full history
+						};
+
+						try {
+							await navigator.share(shareData);
+							console.log('Widget: Conversation link shared successfully');
+						} catch (err) { if (err.name !== 'AbortError') { console.error('Widget: Error sharing content:', err); showError('chat', 'خطا در اشتراک‌گذاری گفتگو.'); } }
+					}
 
 					function formatBotResponse(botResponse, astraResults) {
 						const container = document.createElement('div');
@@ -913,71 +936,80 @@ const renderWidget = () => {
 						sendMessageToParent('vectorSearch', query); // Pass 'vectorSearch' as type
 					}
 
-					// --- Event Listeners ---
-       startChatButton.addEventListener('click', handleUserInfoSubmit); // Listen to new button
+			// --- Event Listeners ---
+			startChatButton.addEventListener('click', handleUserInfoSubmit);
+			chatSendButton.addEventListener('click', handleSendChat);
+			chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendChat(); } });
+			searchButton.addEventListener('click', handleVectorSearch);
+			searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleVectorSearch(); } });
+			// --- NEW: Listeners for top-right buttons ---
+			copyLastButton.addEventListener('click', () => handleCopyLast(copyLastButton));
+			shareChatButton.addEventListener('click', handleShareChat);
 
-        chatSendButton.addEventListener('click', handleSendChat);
-        chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendChat(); } });
+			// --- Listen for messages FROM Parent ---
+			window.addEventListener('message', (event) => {
+				console.log('Parent Listener: Message EVENT received! Origin:', event.origin, 'Data:', event.data);
+				// SECURITY: Origin check
+				const allowedOrigins = [
+					'https://alumglass.com',
+					'http://localhost:8787',
+					'http://127.0.0.1:8787',
+					'http://localhost:3000',
+					'http://127.0.0.1:3000',
+				];
+				// Use RegExp constructor for safety inside template literal
+				const localhostRegex = new RegExp('^http:\\/\\/localhost:\\d+$');
+				const loopbackRegex = new RegExp('^http:\\/\\/127\\.0\\.0\\.1:\\d+$');
+				const isAllowedOrigin =
+					allowedOrigins.includes(event.origin) || localhostRegex.test(event.origin) || loopbackRegex.test(event.origin);
+				console.log('Parent: Processing valid message from widget:', event.data);
 
-        searchButton.addEventListener('click', handleVectorSearch);
-        searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleVectorSearch(); } });
+				// *** CORRECTION: Add safety check for event.data and event.data.type ***
+				if (typeof event.data !== 'object' || event.data === null || !event.data.hasOwnProperty('type')) {
+					console.warn('Widget: Received malformed/typeless message data from parent:', event.data);
+					return; // Ignore message without a 'type'
+				}
+				// *** End Correction ***
+				if (!isAllowedOrigin) return; if (typeof event.data !== 'object' || event.data === null || !event.data.hasOwnProperty('type')) return;
+				console.log('Widget: Message received from parent:', event.data);
+				// Now it's safe to destructure
+				const { type, response, astraResults, results, message, sessionId } = event.data;
 
-					// --- Listen for messages FROM Parent ---
-					window.addEventListener('message', async (event) => {
-						console.log('Parent Listener: Message EVENT received! Origin:', event.origin, 'Data:', event.data);
-						// SECURITY: Origin check
-						const allowedOrigins = [
-							'https://alumglass.com',
-							'http://localhost:8787',
-							'http://127.0.0.1:8787',
-							'http://localhost:3000',
-							'http://127.0.0.1:3000',
-						];
-						// Use RegExp constructor for safety inside template literal
-						const localhostRegex = new RegExp('^http:\\/\\/localhost:\\d+$');
-						const loopbackRegex = new RegExp('^http:\\/\\/127\\.0\\.0\\.1:\\d+$');
-						const isAllowedOrigin =
-							allowedOrigins.includes(event.origin) || localhostRegex.test(event.origin) || loopbackRegex.test(event.origin);
-						console.log('Parent: Processing valid message from widget:', event.data);
-
-						// *** CORRECTION: Add safety check for event.data and event.data.type ***
-						if (typeof event.data !== 'object' || event.data === null || !event.data.hasOwnProperty('type')) {
-							console.warn('Widget: Received malformed/typeless message data from parent:', event.data);
-							return; // Ignore message without a 'type'
-						}
-						// *** End Correction ***
-
-						console.log('Widget: Message received from parent:', event.data);
-						// Now it's safe to destructure
-						const { type, response, astraResults, results, message } = event.data;
-
-						if (type === 'chatResponse') {
+				if (type === 'chatResponse') {
                 showLoading('chat', false);
                 disableInput('chat', false);
-                // *** Store raw response text before formatting ***
-                const rawBotText = response; // Assuming 'response' is the raw text
+                const rawBotText = response;
                 const formattedMessage = formatBotResponse(rawBotText, astraResults);
-                // Pass raw text to addChatMessage
-                addChatMessage('bot', formattedMessage, rawBotText);
+                addChatMessage('bot', formattedMessage, rawBotText); // Pass raw text
+
+                // --- NEW: Update state for action buttons ---
+                lastBotMessageRawText = rawBotText; // Store raw text
+                if (sessionId) { currentSessionId = sessionId; } // Store session ID if received
+                chatActionsContainer.classList.remove('hidden'); // Show action buttons
+                copyLastButton.disabled = false;
+                shareChatButton.disabled = !navigator.share || !currentSessionId; // Disable share if no share API or session ID
+                // --- End Update ---
+
                 chatProcessing = false;
-            } else if (type === 'chatError') {
-							showLoading('chat', false);
-							disableInput('chat', false);
-							showError('chat', message || 'یک خطای ناشناخته در پردازش چت رخ داد.');
-							chatProcessing = false;
-						} else if (type === 'vectorSearchResponse') {
-							showLoading('search', false);
-							disableInput('search', false);
-							displaySearchResults(results);
-							searchProcessing = false;
-						} else if (type === 'vectorSearchError') {
-							showLoading('search', false);
-							disableInput('search', false);
-							showError('search', message || 'یک خطای ناشناخته در جستجوی برداری رخ داد.');
-							resultsDiv.innerHTML = '';
-							searchProcessing = false;
-						}
-					});
+            }
+				 else if (type === 'chatError') {
+									showLoading('chat', false);
+									disableInput('chat', false);
+									showError('chat', message || '...');
+									chatProcessing = false;
+								} else if (type === 'vectorSearchResponse') {
+									showLoading('search', false);
+									disableInput('search', false);
+									displaySearchResults(results);
+									searchProcessing = false;
+								} else if (type === 'vectorSearchError') {
+									showLoading('search', false);
+									disableInput('search', false);
+									showError('search', message || 'یک خطای ناشناخته در جستجوی برداری رخ داد.');
+									resultsDiv.innerHTML = '';
+									searchProcessing = false;
+								}
+							});
 				</script>
 			</body>
 		</html>
@@ -1027,14 +1059,14 @@ app.post('/api/webchat', async (c) => {
 
 		// 3. Perform RAG Query (passing history)
 		console.log('Worker: Performing RAG query for chat (with history)...');
-    const { response: botResponseText, astraResults } = await queryGeminiChatWeb( // Renamed to botResponseText for clarity
-      text, // Pass the user text string
-      searchResults,
-      history,
-      userInfo,
-      c.env,
-      text // Pass original text again for originalQuery param
-    );
+		const { response: botResponseText, astraResults } = await queryGeminiChatWeb( // Renamed to botResponseText for clarity
+		text, // Pass the user text string
+		searchResults,
+		history,
+		userInfo,
+		c.env,
+		text // Pass original text again for originalQuery param
+		);
 		console.log(`Worker: RAG query complete. Found ${astraResults?.length ?? 0} Astra results.`);
 
     // 4. Save messages
@@ -1048,7 +1080,11 @@ app.post('/api/webchat', async (c) => {
       await saveChatMessage(db, sessionId, 'bot', '[Error: Invalid bot response format]');
     }
 		// 5. Return response
-    return c.json({ response: botResponseText, astraResults });
+		return c.json({
+			response: botResponseText,
+			astraResults: astraResults,
+			sessionId: sessionId // Include session ID for the widget
+		});
 
   } catch (error) {
     console.error(`Worker: /api/webchat Error for session ${sessionId}:`, error, error.stack);
@@ -1081,6 +1117,28 @@ app.post('/api/widget-search', async (c) => {
   }
 });
 
+// --- NEW API Endpoint: Get Full Chat History ---
+app.get('/api/get-history/:sessionId', async (c) => {
+	const db = c.env.DB;
+	const sessionId = c.req.param('sessionId');
+
+	if (!sessionId) {
+		return c.json({ error: 'Session ID is required.' }, 400);
+	}
+	console.log(`Worker: API request to get history for session: ${sessionId}`);
+
+	try {
+		const history = await getAllChatHistory(db, sessionId); // Use the new helper
+		if (!history || history.length === 0) {
+			return c.json({ error: 'Chat history not found or empty.' }, 404);
+		}
+		// Return the history array
+		return c.json(history);
+	} catch (error) {
+		console.error(`Worker: Error fetching history via API for session ${sessionId}:`, error);
+		return c.json({ error: 'Failed to retrieve chat history.' }, 500);
+	}
+});
 // --- Helper Functions ---
 
 // Generate Embedding Function
