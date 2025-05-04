@@ -170,3 +170,8 @@ dist
 
 .dev.vars
 .wrangler/
+# Ignore wrangler.toml to protect sensitive keys
+
+wrangler.toml
+# Ignore all wrangler.toml files
+**/wrangler.toml
