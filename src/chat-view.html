@@ -7,20 +7,20 @@
     <!-- Add similar CSS/Fonts as your widget if desired -->
     <style>
         body { font-family: 'Vazirmatn', sans-serif; padding: 20px; background-color: #f4f4f4; }
-        #history-container { background: #fff; padding: 15px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        #history-container { background: #fff; padding: 15px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: none; }
         .message { margin-bottom: 10px; padding: 8px 12px; border-radius: 5px; max-width: 80%; }
         .user { background-color: #e1f5fe; margin-left: auto; text-align: right; }
         .bot { background-color: #f0f0f0; margin-right: auto; text-align: right; }
         .timestamp { font-size: 0.75em; color: #888; margin-top: 3px; }
         #loading-history { text-align: center; padding: 20px; }
-        #error-history { color: red; text-align: center; padding: 20px; }
+        #error-history { color: red; text-align: center; padding: 20px; display: none; }
     </style>
 </head>
 <body>
     <h1>تاریخچه گفتگو</h1>
     <div id="loading-history">در حال بارگذاری تاریخچه...</div>
-    <div id="error-history" style="display: none;"></div>
-    <div id="history-container" style="display: none;">
+    <div id="error-history"></div>
+    <div id="history-container">
         <!-- History will be loaded here -->
     </div>
 
@@ -28,6 +28,8 @@
         const historyContainer = document.getElementById('history-container');
         const loadingDiv = document.getElementById('loading-history');
         const errorDiv = document.getElementById('error-history');
+        // --- DEFINE YOUR WORKER'S BASE URL ---
+        const workerApiBaseUrl = 'https://bhrwidget.aihoore.ir'; // Important! Use your actual worker URL
 
         async function loadHistory() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -38,14 +40,23 @@
                 return;
             }
 
-            // Use the correct API endpoint from your worker
-            const historyApiUrl = `/api/get-history/${sessionId}`; 
+            // --- CORRECTION: Use the full API URL ---
+            const historyApiUrl = `${workerApiBaseUrl}/api/get-history/${sessionId}`;
+            console.log("Fetching history from:", historyApiUrl); // Log the URL being fetched
 
             try {
-                const response = await fetch(historyApiUrl);
+                const response = await fetch(historyApiUrl); // Fetch from the full URL
                 if (!response.ok) {
                     let errorMsg = `خطا در دریافت تاریخچه: ${response.status}`;
-                    try { errorMsg = (await response.json()).error || errorMsg; } catch {}
+                    try {
+                        // Try parsing error from worker's JSON response
+                        const errorJson = await response.json();
+                        errorMsg = errorJson.error || errorMsg;
+                    } catch (parseError) {
+                        // If parsing fails, use the status text
+                        console.warn("Could not parse error response body:", parseError);
+                        errorMsg = response.statusText || errorMsg;
+                    }
                     throw new Error(errorMsg);
                 }
 
@@ -71,12 +82,15 @@
             history.forEach(msg => {
                 const msgDiv = document.createElement('div');
                 msgDiv.classList.add('message', msg.role); // 'user' or 'bot'
-                // Basic text display - could use markdown renderer here too if needed
-                msgDiv.textContent = msg.content;
+                // Simple text display (consider markdown rendering if needed)
+                const contentP = document.createElement('p');
+                contentP.textContent = msg.content;
+                msgDiv.appendChild(contentP);
+
 
                 const timeDiv = document.createElement('div');
                 timeDiv.classList.add('timestamp');
-                timeDiv.textContent = new Date(msg.timestamp).toLocaleString('fa-IR'); // Format timestamp
+                timeDiv.textContent = new Date(msg.timestamp).toLocaleString('fa-IR');
                 msgDiv.appendChild(timeDiv);
 
                 historyContainer.appendChild(msgDiv);
@@ -85,14 +99,15 @@
         }
 
         function showErrorHistory(message) {
-             errorDiv.textContent = message;
-             errorDiv.style.display = 'block';
-             loadingDiv.style.display = 'none';
-             historyContainer.style.display = 'none';
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            loadingDiv.style.display = 'none';
+            historyContainer.style.display = 'none';
         }
 
         // Load history when the page loads
         document.addEventListener('DOMContentLoaded', loadHistory);
     </script>
+
 </body>
 </html>

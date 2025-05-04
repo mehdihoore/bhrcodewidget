@@ -3,21 +3,22 @@
 
     <!-- This container holds the iframe and defines its size -->
     <div id="ai-widget-iframe-container">
-        <iframe id="ai-widget-iframe" src="https://bhrwidget.aihoore.ir/widget"
-            style="width: 100%; height: 100%; border: none; display: block;" title="AlumGlass AI مشاور"
-            allow="clipboard-write web-share" >
-        </iframe>
+    <iframe id="ai-widget-iframe" 
+        class="ai-widget-iframe" src="https://bhrwidget.aihoore.ir/widget"
+        title="AlumGlass AI مشاور"
+        allow="clipboard-write; web-share 'src';"
+        >
+    </iframe>
     </div>
 
 </div>
 
 <script>
-    // --- PARENT PAGE JAVASCRIPT from previous step ---
     // Get reference to the iframe
     const widgetIframe = document.getElementById('ai-widget-iframe');
 
     // Define constants for the worker URLs and origin
-    const widgetWorkerBaseUrl = 'https://bhrwidget.aihoore.ir'; // Your worker URL base
+    const widgetWorkerBaseUrl = 'https://bhrwidget.aihoore.ir'; 
     const widgetOrigin = widgetWorkerBaseUrl; // The expected origin of the iframe's content
     const widgetWorkerChatApiUrl = `${widgetWorkerBaseUrl}/api/webchat`;
     const widgetWorkerSearchApiUrl = `${widgetWorkerBaseUrl}/api/widget-search`;
@@ -27,73 +28,79 @@
         console.log("Parent Script (alumglass.com): Found widget iframe. Attaching message listener.");
 
         window.addEventListener('message', async (event) => {
-            console.log("Parent Listener (alumglass.com): Message EVENT received! Origin:", event.origin, "Data:", event.data);
+        console.log("Parent Listener (alumglass.com): Message EVENT received! Origin:", event.origin, "Data:", event.data);
 
-            // --- SECURITY CHECK ---
-            if (event.origin !== widgetOrigin) { console.warn(`Parent Listener: IGNORED message from unexpected origin: ${event.origin}. Expected: ${widgetOrigin}`); return; }
+        // --- SECURITY CHECK ---
+         if (event.origin !== widgetOrigin) { console.warn(`Parent Listener: IGNORED message from unexpected origin: ${event.origin}. Expected: ${widgetOrigin}`); return; }
 
-            // --- Data Validation ---
-            if (typeof event.data !== 'object' || event.data === null || !event.data.hasOwnProperty('type')) { console.warn("Parent Listener: IGNORED malformed/typeless message data from widget:", event.data); return; }
+        // --- Data Validation ---
+        if (typeof event.data !== 'object' || event.data === null || !event.data.hasOwnProperty('type')) { console.warn("Parent Listener: IGNORED malformed/typeless message data from widget:", event.data); return; }
 
             console.log("Parent Listener: Processing VALID message from widget:", event.data);
-            // Destructure type first
-            const { type, text, userInfo } = event.data;
+            const { type } = event.data;
 
-            // --- Handle CHAT Message ---
-              if (type === 'chatMessage') {
-             const requestBody = { text: text };
-             if (userInfo) { requestBody.userInfo = userInfo; }
+        // --- Handle CHAT Message ---
+          if (type === 'chatMessage') {
+                // --- CORRECT EXTRACTION & RECONSTRUCTION ---
+                let userQueryText = null;
+                let userInfoObject = null;
 
-            console.log(`Parent: Handling 'chatMessage'. Calling API: ${widgetWorkerChatApiUrl}`);
-            try {
-                     const response = await fetch(widgetWorkerChatApiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(requestBody), // Send the corrected body
-                    });
-
-                    console.log(`Parent: API call for chat completed. Status: ${response.status}`);
-                    if (!response.ok) { let e = { m: `API Chat Error: ${response.status}` }; try { e.m = (await response.json()).error || e.m; } catch { } throw new Error(e.m); }
-                    const result = await response.json();
-                    console.log("Parent: Parsed chat API result:", result);
-                    if (widgetIframe.contentWindow) {
-                         const messageToSend = {
-                        type: 'chatResponse',
-                        response: result.response,
-                        astraResults: result.astraResults,
-                        sessionId: result.sessionId // Forward the sessionId
-                    };
-                        console.log("Parent: Sending 'chatResponse' back to widget origin:", widgetOrigin);
-                        widgetIframe.contentWindow.postMessage(messageToSend, widgetOrigin);
-                    }  else { console.error("Parent: Cannot find widget contentWindow (chat response)."); }
-                } catch (error) {
-                    console.error('Parent Error handling chat message:', error);
-                    if (widgetIframe.contentWindow) {
-                        const eMsg = { type: 'chatError', message: error.message || 'Unknown chat error in parent.' };
-                        console.log("Parent: Sending 'chatError' back to widget origin:", widgetOrigin);
-                        widgetIframe.contentWindow.postMessage(eMsg, widgetOrigin);
-                    }
-                }
-            }
-            // --- Handle VECTOR SEARCH Message ---
-            else if (type === 'vectorSearch') {
-                // --- CORRECTION: Extract nested text for search too ---
-                let userSearchQuery = null;
+                // Check for the nested structure seen in logs
                 if (typeof event.data.text === 'object' && event.data.text !== null && event.data.text.hasOwnProperty('text')) {
-                    userSearchQuery = event.data.text.text; // Extract nested text
-                } else if (typeof event.data.text === 'string') {
-                    userSearchQuery = event.data.text; // Handle flat structure
-                } else {
-                    console.error("Parent: Received vectorSearch but could not extract text string. Data:", event.data);
-                    if (widgetIframe.contentWindow) {
-                        widgetIframe.contentWindow.postMessage({ type: 'vectorSearchError', message: 'Failed to read search text in parent window.' }, widgetOrigin);
-                    }
-                    return; // Don't proceed
+                    userQueryText = event.data.text.text;
+                    userInfoObject = event.data.text.userInfo; // Get userInfo from the nested text object
+                    console.log("Parent: Extracted nested text and userInfo.");
                 }
-                // --- End Correction ---
+                // Check for the originally intended flat structure
+                else if (typeof event.data.text === 'string') {
+                    userQueryText = event.data.text;
+                    userInfoObject = event.data.userInfo; // Get userInfo from top level
+                    console.log("Parent: Extracted flat text and userInfo.");
+                } else {
+                    console.error("Parent: Received chatMessage but could not extract text string. Data:", event.data);
+                    if (widgetIframe.contentWindow) { widgetIframe.contentWindow.postMessage({ type: 'chatError', message: 'Failed to read message text in parent window.' }, widgetOrigin); }
+                    return;
+                }
 
-                const requestBody = { text: userSearchQuery }; // Use extracted query
-                console.log(`Parent: Handling 'vectorSearch'. Calling API: ${widgetWorkerSearchApiUrl} with body:`, JSON.stringify(requestBody));
+             // --- Build the requestBody CORRECTLY ---
+              const requestBody = {
+                  text: userQueryText // Top-level 'text' property with the string value
+              };
+              if (userInfoObject) {
+                  requestBody.userInfo = userInfoObject; // Top-level 'userInfo' property if it exists
+              }
+              // --- End Correction ---
+
+              console.log(`Parent: Handling 'chatMessage'. Calling API: ${widgetWorkerChatApiUrl} with body:`, JSON.stringify(requestBody)); // Log the CORRECT body
+
+              try {
+                  const response = await fetch(widgetWorkerChatApiUrl, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(requestBody), // Send the corrected body
+                  });
+                  // ... rest of chat success/error handling ...
+                  console.log(`Parent: API call for chat completed. Status: ${response.status}`); if (!response.ok) { let e = { m: `API Chat Error: ${response.status}` }; try { e.m = (await response.json()).error || e.m; } catch { } throw new Error(e.m); } const result = await response.json(); console.log("Parent: Parsed chat API result:", result); if (widgetIframe.contentWindow) { const msg = { type: 'chatResponse', response: result.response, astraResults: result.astraResults, sessionId: result.sessionId }; console.log("Parent: Sending 'chatResponse' back to widget origin:", widgetOrigin); widgetIframe.contentWindow.postMessage(msg, widgetOrigin); } else { console.error("Parent: Cannot find widget contentWindow (chat response)."); }
+              } catch (error) { /* ... error handling ... */ console.error('Parent Error handling chat message:', error); if (widgetIframe.contentWindow) { const eMsg = { type: 'chatError', message: error.message || 'Unknown chat error in parent.' }; console.log("Parent: Sending 'chatError' back to widget origin:", widgetOrigin); widgetIframe.contentWindow.postMessage(eMsg, widgetOrigin); } }
+          }
+             else if (type === 'vectorSearch') {
+              // --- CORRECT EXTRACTION & RECONSTRUCTION for Search ---
+              let userSearchQuery = null;
+              if (typeof event.data.text === 'object' && event.data.text !== null && event.data.text.hasOwnProperty('text')) {
+                  userSearchQuery = event.data.text.text;
+              } else if (typeof event.data.text === 'string') {
+                  userSearchQuery = event.data.text;
+              } else {
+                  console.error("Parent: Received vectorSearch but could not extract text string. Data:", event.data);
+                  if (widgetIframe.contentWindow) { widgetIframe.contentWindow.postMessage({ type: 'vectorSearchError', message: 'Failed to read search text in parent window.' }, widgetOrigin); }
+                  return;
+              }
+              // --- Build the requestBody correctly ---
+              const requestBody = {
+                  text: userSearchQuery // Top-level 'text' property
+              };
+              // --- End Correction ---
+             console.log(`Parent: Handling 'vectorSearch'. Calling API: ${widgetWorkerSearchApiUrl} with body:`, JSON.stringify(requestBody));
                 try { /* ... fetch API call for search ... */
                     const response = await fetch(widgetWorkerSearchApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody), }); console.log(`Parent: API call for search completed. Status: ${response.status}`); if (!response.ok) { let e = { m: `API Search Error: ${response.status}` }; try { e.m = (await response.json()).error || e.m; } catch { } throw new Error(e.m); } const results = await response.json(); console.log("Parent: Parsed search API result:", results); if (widgetIframe.contentWindow) { const msg = { type: 'vectorSearchResponse', results: results }; console.log("Parent: Sending 'vectorSearchResponse' back to widget origin:", widgetOrigin); widgetIframe.contentWindow.postMessage(msg, widgetOrigin); } else { console.error("Parent: Cannot find widget contentWindow (search response)."); }
                 } catch (error) { /* ... error handling ... */ console.error('Parent Error handling vector search:', error); if (widgetIframe.contentWindow) { const eMsg = { type: 'vectorSearchError', message: error.message || 'Unknown search error in parent.' }; console.log("Parent: Sending 'vectorSearchError' back to widget origin:", widgetOrigin); widgetIframe.contentWindow.postMessage(eMsg, widgetOrigin); } }
