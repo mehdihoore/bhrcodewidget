@@ -622,6 +622,7 @@ const renderWidget = () => {
 					<!-- Chat Section -->
 					<div class="widget-section chat-section">
 						<h2>گفتگو با هوش مصنوعی</h2>
+						<div id="welcome-back-message"></div>
 						<div id="chat-actions-container" class="hidden">
 							<button id="copy-last-button" disabled><i class="fas fa-copy"></i> کپی آخرین پاسخ</button>
 							<button id="share-chat-button" disabled><i class="fas fa-share-alt"></i> اشتراک گفتگو</button>
@@ -631,9 +632,7 @@ const renderWidget = () => {
 							دقیق استفاده می‌کند. تاریخچه گفتگو برای بهبود زمینه پاسخ‌ها ذخیره می‌شود.
 						</p>
 						<div id="chat-messages" class="chat-messages">
-							<div class="bot-message message-base">
-								سلام! من مشاور هوش مصنوعی AlumGlass هستم. چگونه می‌توانم در مورد مباحث مقررات ملی ساختمان به شما کمک کنم؟
-							</div>
+							<!-- Initial message(s) might change based on login state -->
 						</div>
 						<div id="chat-loading" class="loading-indicator hidden">
 							<svg class="loading" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -647,8 +646,7 @@ const renderWidget = () => {
 							<span class="ml-2">در حال پردازش چت...</span>
 						</div>
 						<div id="chat-error" class="error-message general-error"></div>
-						<!-- Dedicated error div -->
-						<!-- ADDED: User Info Form (Initially Visible) -->
+
 						<form id="user-info-form">
 							<!-- Use form element -->
 							<p id="user-info-note">برای تجربه بهتر، می‌توانید اطلاعات زیر را وارد کنید (اختیاری).</p>
