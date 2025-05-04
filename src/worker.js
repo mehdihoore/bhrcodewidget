@@ -100,7 +100,8 @@ async function saveChatMessage(db, sessionId, role, content) {
 const renderWidget = () => {
 	// Add base URL dynamically for constructing share links later
 	const widgetBaseUrl = 'https://bhrwidget.aihoore.ir';
-	const newLocal = `
+	// Combined HTML for Chat and Vector Search within the widget
+	return html`
 		<!DOCTYPE html>
 		<html lang="fa" dir="rtl">
 			<head>
@@ -116,7 +117,13 @@ const renderWidget = () => {
 					href="https://fonts.googleapis.com/css2?family=Lateef:wght@200;300;400;500;600;700;800&family=Vazirmatn:wght@100..900&display=swap"
 					rel="stylesheet"
 				/>
-         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+				<link
+					rel="stylesheet"
+					href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+					integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+					crossorigin="anonymous"
+					referrerpolicy="no-referrer"
+				/>
 
 				<style>
 					/* Base styles */
@@ -457,98 +464,126 @@ const renderWidget = () => {
 						margin-top: 15px; /* Space above credits */
 						padding-bottom: 5px;
 					}
-             #user-info-form {
-             padding: 1rem 0.5rem;
-             border-top: 1px solid #333;
-             margin-top: auto; /* Push to bottom */
-        }
-        #user-info-form .form-grid {
-             display: grid;
-             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Responsive grid */
-             gap: 0.75rem;
-             margin-bottom: 1rem;
-        }
-        #user-info-form label {
-             display: block;
-             font-size: 0.9em;
-             margin-bottom: 0.25rem;
-             color: #ccc;
-        }
-        #user-info-form input[type="text"],
-        #user-info-form input[type="tel"] {
-             width: 100%;
-             background-color: #2d2d2d;
-             color: #e0e0e0;
-             border: 1px solid #444;
-             padding: 0.5rem 0.8rem;
-             border-radius: 0.375rem;
-             font-size: 0.95em;
-             box-sizing: border-box;
-        }
-         #user-info-form input:focus {
-             outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
-         }
-        #user-info-form button {
-             width: 100%; /* Full width button */
-             background-color: #16a34a; /* Green */
-             color: white; padding: 0.6rem 1rem; border: none; border-radius: 0.5rem;
-             cursor: pointer; transition: background-color 0.2s ease; font-family: "Vazirmatn", sans-serif;
-             font-weight: 600;
-        }
-         #user-info-form button:hover {
-             background-color: #15803d;
-         }
-         #user-info-note {
-             font-size: 0.8em;
-             color: #888;
-             text-align: right;
-             margin-bottom: 1rem;
-         }
-        /* Initially hide chat input area */
-        #chat-input-area.hidden { display: none; }
-		#user-info-form.hidden { display: none; }
-        /* --- End User Info Form Styles --- */
+					#user-info-form {
+						padding: 1rem 0.5rem;
+						border-top: 1px solid #333;
+						margin-top: auto; /* Push to bottom */
+					}
+					#user-info-form .form-grid {
+						display: grid;
+						grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Responsive grid */
+						gap: 0.75rem;
+						margin-bottom: 1rem;
+					}
+					#user-info-form label {
+						display: block;
+						font-size: 0.9em;
+						margin-bottom: 0.25rem;
+						color: #ccc;
+					}
+					#user-info-form input[type='text'],
+					#user-info-form input[type='tel'] {
+						width: 100%;
+						background-color: #2d2d2d;
+						color: #e0e0e0;
+						border: 1px solid #444;
+						padding: 0.5rem 0.8rem;
+						border-radius: 0.375rem;
+						font-size: 0.95em;
+						box-sizing: border-box;
+					}
+					#user-info-form input:focus {
+						outline: none;
+						border-color: #3b82f6;
+						box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+					}
+					#user-info-form button {
+						width: 100%; /* Full width button */
+						background-color: #16a34a; /* Green */
+						color: white;
+						padding: 0.6rem 1rem;
+						border: none;
+						border-radius: 0.5rem;
+						cursor: pointer;
+						transition: background-color 0.2s ease;
+						font-family: 'Vazirmatn', sans-serif;
+						font-weight: 600;
+					}
+					#user-info-form button:hover {
+						background-color: #15803d;
+					}
+					#user-info-note {
+						font-size: 0.8em;
+						color: #888;
+						text-align: right;
+						margin-bottom: 1rem;
+					}
+					/* Initially hide chat input area */
+					#chat-input-area.hidden {
+						display: none;
+					}
+					/* --- End User Info Form Styles --- */
 
-         /* --- ADDED: Styles for Copy/Share buttons --- */
-         #chat-actions-container {
-            position: absolute;
-            top: 10px; /* Position near top */
-            left: 15px; /* Position left (because of RTL default?) - adjust if needed */
-            z-index: 10; /* Ensure above messages */
-            display: flex;
-            gap: 8px;
-            direction: ltr; /* Ensure buttons layout LTR */
-        }
-        #chat-actions-container button { /* Style buttons directly */
-            background-color: #555; color: #eee; border: none; border-radius: 4px;
-            padding: 4px 8px; cursor: pointer; font-size: 0.8em; line-height: 1;
-            transition: background-color 0.2s; display: flex; align-items: center; gap: 4px;
-        }
-        #chat-actions-container button:hover:not(:disabled) { background-color: #666; }
-        #chat-actions-container button:disabled { opacity: 0.5; cursor: not-allowed; }
-        #chat-actions-container button i { margin-right: 0; /* Remove previous margin */ }
-        /* Hide initially */
-        #chat-actions-container.hidden { display: none; }
-        /* --- End Top-Right Action Button Styles --- */
-        
-         .message-action-button {
-             background-color: #555; /* Darker gray */
-             color: #eee;
-             border: none;
-             border-radius: 4px;
-             padding: 3px 6px;
-             cursor: pointer;
-             font-size: 0.75em; /* Smaller font */
-             line-height: 1;
-             transition: background-color 0.2s;
-         }
-         .message-action-button:hover {
-             background-color: #666;
-         }
-         .message-action-button i { /* Style font awesome icons */
-             margin-right: 3px;
-         }
-          /* --- End Copy/Share Styles --- */
+					/* --- ADDED: Styles for Copy/Share buttons --- */
+					#chat-actions-container {
+						position: absolute;
+						top: 10px; /* Position near top */
+						left: 15px; /* Position left (because of RTL default?) - adjust if needed */
+						z-index: 10; /* Ensure above messages */
+						display: flex;
+						gap: 8px;
+						direction: ltr; /* Ensure buttons layout LTR */
+					}
+					#chat-actions-container button {
+						/* Style buttons directly */
+						background-color: #555;
+						color: #eee;
+						border: none;
+						border-radius: 4px;
+						padding: 4px 8px;
+						cursor: pointer;
+						font-size: 0.8em;
+						line-height: 1;
+						transition: background-color 0.2s;
+						display: flex;
+						align-items: center;
+						gap: 4px;
+					}
+					#chat-actions-container button:hover:not(:disabled) {
+						background-color: #666;
+					}
+					#chat-actions-container button:disabled {
+						opacity: 0.5;
+						cursor: not-allowed;
+					}
+					#chat-actions-container button i {
+						margin-right: 0; /* Remove previous margin */
+					}
+					/* Hide initially */
+					#chat-actions-container.hidden {
+						display: none;
+					}
+					/* --- End Top-Right Action Button Styles --- */
+
+					.message-action-button {
+						background-color: #555; /* Darker gray */
+						color: #eee;
+						border: none;
+						border-radius: 4px;
+						padding: 3px 6px;
+						cursor: pointer;
+						font-size: 0.75em; /* Smaller font */
+						line-height: 1;
+						transition: background-color 0.2s;
+					}
+					.message-action-button:hover {
+						background-color: #666;
+					}
+					.message-action-button i {
+						/* Style font awesome icons */
+						margin-right: 3px;
+					}
+					/* --- End Copy/Share Styles --- */
 				</style>
 			</head>
 			<body>
@@ -582,32 +617,37 @@ const renderWidget = () => {
 						</div>
 						<div id="chat-error" class="error-message general-error"></div>
 						<!-- Dedicated error div -->
-            <!-- ADDED: User Info Form (Initially Visible) -->
-             <div id="user-info-form">
-                 <p id="user-info-note">پر کردن موارد زیر اختیاری است.</p>
-                 <div class="form-grid">
-                     <div>
-                         <label for="user-first-name">نام و نام خانوادگی</label>
-                         <input type="text" id="user-first-name" name="firstName">
-                     </div>
-                    
-                     <div>
-                         <label for="user-phone">تلفن یا ایمیل</label>
-                         <input type="tel" id="user-phone" name="phone">
-                     </div>
-                    
-                 </div>
-                 <button id="start-chat-button">ذخیره اطلاعات و شروع گفتگو</button>
-             </div>
-             <!-- End User Info Form -->
-				<!-- Chat Input Area (Initially Hidden) -->
-              	<div id="chat-input-area" class="input-area hidden">
-                	<input id="chat-input" type="text" placeholder="سوال خود را برای چت بنویسید..." />
-                	<button id="chat-send-button">ارسال</button>
-             	</div>
-             <!-- End Chat Input Area -->
-        </div>
-
+						<!-- ADDED: User Info Form (Initially Visible) -->
+						<div id="user-info-form">
+							<p id="user-info-note">پر کردن موارد زیر اختیاری است.</p>
+							<div class="form-grid">
+								<div>
+									<label for="user-first-name">نام</label>
+									<input type="text" id="user-first-name" name="firstName" />
+								</div>
+								<div>
+									<label for="user-last-name">نام خانوادگی</label>
+									<input type="text" id="user-last-name" name="lastName" />
+								</div>
+								<div>
+									<label for="user-phone">تلفن</label>
+									<input type="tel" id="user-phone" name="phone" />
+								</div>
+								<div>
+									<label for="user-address">آدرس</label>
+									<input type="text" id="user-address" name="address" />
+								</div>
+							</div>
+							<button id="start-chat-button">شروع گفتگو</button>
+						</div>
+						<!-- End User Info Form -->
+						<!-- Chat Input Area (Initially Hidden) -->
+						<div id="chat-input-area" class="input-area hidden">
+							<input id="chat-input" type="text" placeholder="سوال خود را برای چت بنویسید..." />
+							<button id="chat-send-button">ارسال</button>
+						</div>
+						<!-- End Chat Input Area -->
+					</div>
 
 					<!-- Vector Search Section -->
 					<div class="widget-section search-section">
@@ -638,9 +678,9 @@ const renderWidget = () => {
 
 				<script>
 					const md = new markdownit({ breaks: true, linkify: true, typographer: true });
-          			const userInfoForm = document.getElementById('user-info-form');
-          			const startChatButton = document.getElementById('start-chat-button');
-          			const chatInputArea = document.getElementById('chat-input-area');
+					const userInfoForm = document.getElementById('user-info-form');
+					const startChatButton = document.getElementById('start-chat-button');
+					const chatInputArea = document.getElementById('chat-input-area');
 
 					// --- DOM Element References ---
 					const chatInput = document.getElementById('chat-input');
@@ -660,7 +700,7 @@ const renderWidget = () => {
 
 					let chatProcessing = false;
 					let searchProcessing = false;
-          			let collectedUserInfo = null; // Variable to store user info temporarily
+					let collectedUserInfo = null; // Variable to store user info temporarily
 					let lastBotMessageRawText = '';
 					let currentSessionId = null; // Will be populated from API response
 
@@ -697,7 +737,7 @@ const renderWidget = () => {
 					}
 
 					// --- Message Handling Functions ---
-					        // --- Message Handling & Actions ---
+					// --- Message Handling & Actions ---
 					function addChatMessage(sender, message, rawText = '') {
 						const messageDiv = document.createElement('div');
 						messageDiv.classList.add('message-base');
@@ -719,12 +759,13 @@ const renderWidget = () => {
 						chatMessagesDiv.scrollTo({ top: chatMessagesDiv.scrollHeight, behavior: 'smooth' });
 					}
 
-					
-
-         			// --- NEW: Copy Handler ---
+					// --- NEW: Copy Handler ---
 					async function handleCopyLast(buttonElement) {
 						if (!lastBotMessageRawText) return; // Nothing to copy
-						if (!navigator.clipboard) { showError('chat', 'مرورگر شما از کپی در کلیپ‌بورد پشتیبانی نمی‌کند.'); return; }
+						if (!navigator.clipboard) {
+							showError('chat', 'مرورگر شما از کپی در کلیپ‌بورد پشتیبانی نمی‌کند.');
+							return;
+						}
 						try {
 							await navigator.clipboard.writeText(lastBotMessageRawText);
 							buttonElement.innerHTML = '<i class="fas fa-check"></i> کپی شد!';
@@ -745,8 +786,14 @@ const renderWidget = () => {
 
 					// --- NEW: Share Handler ---
 					async function handleShareChat() {
-						if (!currentSessionId) { showError('chat', 'شناسه گفتگو برای اشتراک‌گذاری یافت نشد.'); return; }
-						if (!navigator.share) { showError('chat', 'مرورگر شما از قابلیت اشتراک‌گذاری پشتیبانی نمی‌کند.'); return; }
+						if (!currentSessionId) {
+							showError('chat', 'شناسه گفتگو برای اشتراک‌گذاری یافت نشد.');
+							return;
+						}
+						if (!navigator.share) {
+							showError('chat', 'مرورگر شما از قابلیت اشتراک‌گذاری پشتیبانی نمی‌کند.');
+							return;
+						}
 
 						// --- CONSTRUCT THE SHARE URL ---
 						// Option 1: Link to a dedicated history page on your main site
@@ -757,13 +804,18 @@ const renderWidget = () => {
 						const shareData = {
 							title: 'گفتگو با مشاور AlumGlass',
 							text: \`خلاصه گفتگو با مشاور AlumGlass. آخرین پاسخ: \${lastBotMessageRawText.substring(0, 100)}...\`, // Share snippet
-							url: shareUrl // Share the link to the full history
+							url: shareUrl, // Share the link to the full history
 						};
 
 						try {
 							await navigator.share(shareData);
 							console.log('Widget: Conversation link shared successfully');
-						} catch (err) { if (err.name !== 'AbortError') { console.error('Widget: Error sharing content:', err); showError('chat', 'خطا در اشتراک‌گذاری گفتگو.'); } }
+						} catch (err) {
+							if (err.name !== 'AbortError') {
+								console.error('Widget: Error sharing content:', err);
+								showError('chat', 'خطا در اشتراک‌گذاری گفتگو.');
+							}
+						}
 					}
 
 					function formatBotResponse(botResponse, astraResults) {
@@ -854,12 +906,9 @@ const renderWidget = () => {
 					function sendMessageToParent(messageType, text) {
 						try {
 							const targetOrigin = window.location.ancestorOrigins[0] || '*';
-							const messageToSend = {
-							type: messageType,
-							text: data.text // We only need the text for the API now
-							};
-							console.log(\`Widget: Sending message to parent (\${targetOrigin}):\`, messageToSend);
-							window.parent.postMessage(messageToSend, targetOrigin);
+							console.log(\`Widget: Sending \${messageType} message to parent (\${targetOrigin}):\`, text);
+							// Use messageType in the object sent
+							window.parent.postMessage({ type: messageType, text: text }, targetOrigin);
 						} catch (err) {
 							console.error('Widget: Error sending message to parent:', err);
 							// Determine error context based on messageType
@@ -873,157 +922,159 @@ const renderWidget = () => {
 					}
 
 					// --- Event Handlers ---
-          	// --- NEW: Handle User Info Form Submission ---
-            function handleUserInfoSubmit(event) {
-				event.preventDefault();
-				// You might still want to *read* the values if you plan to use them
-				// immediately for some client-side logic, but we won't store them globally.
-				// const firstName = document.getElementById('user-first-name').value.trim();
-				// console.log("User info submitted (optional fields read but not stored globally)");
+					// --- NEW: Handle User Info Form Submission ---
+					function handleUserInfoSubmit(event) {
+						event.preventDefault(); // Prevent default form submission
+						const firstName = document.getElementById('user-first-name').value.trim();
+						const lastName = document.getElementById('user-last-name').value.trim();
+						const phone = document.getElementById('user-phone').value.trim();
+						const address = document.getElementById('user-address').value.trim();
 
-				// --- SET THE FLAG in localStorage ---
-				try {
-					localStorage.setItem(INFO_SUBMITTED_KEY, 'true');
-					console.log("Widget: Set info submitted flag in localStorage.");
-				} catch (e) {
-					console.error("Widget: Error setting item in localStorage", e);
-					// Proceed anyway, but the form might reappear on refresh
-				}
+						collectedUserInfo = {
+							// Store locally in the widget script's scope
+							firstName: firstName || null, // Send null if empty
+							lastName: lastName || null,
+							phone: phone || null,
+							address: address || null,
+						};
+						console.log('Widget: User info collected:', collectedUserInfo);
 
-				// Hide form, show chat input
-				userInfoForm.classList.add('hidden');
-				chatInputArea.classList.remove('hidden');
-				chatInput.focus();
-        	}
+						// Send user info to parent (optional, depends if parent needs it directly)
+						// sendMessageToParent('userInfoCollected', { userInfo: collectedUserInfo });
+
+						// Hide form, show chat
+						userInfoForm.classList.add('hidden');
+						chatInputArea.classList.remove('hidden');
+						chatInput.focus(); // Focus the chat input
+					}
+
 					// Modified Chat Handler
-        // MODIFIED: Chat Handler (no longer sends userInfo)
-        async function handleSendChat() {
-            const message = chatInput.value.trim();
-            if (!message || chatProcessing) return;
-            chatProcessing = true;
-            addChatMessage('user', message, message);
-            chatInput.value = '';
-            disableInput('chat', true); showError('chat', null); showLoading('chat', true);
+					async function handleSendChat() {
+						const message = chatInput.value.trim();
+						if (!message || chatProcessing) return;
 
-            // Prepare data - ONLY includes text now
-            const messageData = { text: message };
-            sendMessageToParent('chatMessage', messageData); // Send object containing only text
-        }
-			async function handleVectorSearch() {
-				const query = searchInput.value.trim();
-				if (!query || searchProcessing) return;
+						chatProcessing = true;
+						// Pass raw message text to addChatMessage
+						addChatMessage('user', message, message);
+						chatInput.value = '';
+						disableInput('chat', true);
+						showError('chat', null);
+						showLoading('chat', true);
 
-				searchProcessing = true;
-				resultsDiv.innerHTML = '';
-				disableInput('search', true);
-				showError('search', null);
-				showLoading('search', true);
+						// Prepare data to send
+						const messageData = { text: message };
+						// Include user info ONLY if we just collected it and haven't sent it yet
+						if (collectedUserInfo) {
+							messageData.userInfo = collectedUserInfo;
+							collectedUserInfo = null; // Clear it after sending once
+						}
 
-				sendMessageToParent('vectorSearch', query); // Pass 'vectorSearch' as type
-			}
+						sendMessageToParent('chatMessage', messageData); // Send object
+					}
 
-			// --- Event Listeners ---
-			startChatButton.addEventListener('click', handleUserInfoSubmit);
-			chatSendButton.addEventListener('click', handleSendChat);
-			chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendChat(); } });
-			searchButton.addEventListener('click', handleVectorSearch);
-			searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleVectorSearch(); } });
-			// --- NEW: Listeners for top-right buttons ---
-			copyLastButton.addEventListener('click', () => handleCopyLast(copyLastButton));
-			shareChatButton.addEventListener('click', handleShareChat);
+					async function handleVectorSearch() {
+						const query = searchInput.value.trim();
+						if (!query || searchProcessing) return;
 
-			// --- Listen for messages FROM Parent ---
-			window.addEventListener('message', (event) => {
-				console.log('Parent Listener: Message EVENT received! Origin:', event.origin, 'Data:', event.data);
-				// SECURITY: Origin check
-				const allowedOrigins = [
-					'https://alumglass.com',
-					'http://localhost:8787',
-					'http://127.0.0.1:8787',
-					'http://localhost:3000',
-					'http://127.0.0.1:3000',
-				];
-				// Use RegExp constructor for safety inside template literal
-				const localhostRegex = new RegExp('^http:\\/\\/localhost:\\d+$');
-				const loopbackRegex = new RegExp('^http:\\/\\/127\\.0\\.0\\.1:\\d+$');
-				const isAllowedOrigin =
-					allowedOrigins.includes(event.origin) || localhostRegex.test(event.origin) || loopbackRegex.test(event.origin);
-				console.log('Parent: Processing valid message from widget:', event.data);
+						searchProcessing = true;
+						resultsDiv.innerHTML = '';
+						disableInput('search', true);
+						showError('search', null);
+						showLoading('search', true);
 
-				// *** CORRECTION: Add safety check for event.data and event.data.type ***
-				if (typeof event.data !== 'object' || event.data === null || !event.data.hasOwnProperty('type')) {
-					console.warn('Widget: Received malformed/typeless message data from parent:', event.data);
-					return; // Ignore message without a 'type'
-				}
-				// *** End Correction ***
-				if (!isAllowedOrigin) return; if (typeof event.data !== 'object' || event.data === null || !event.data.hasOwnProperty('type')) return;
-				console.log('Widget: Message received from parent:', event.data);
-				// Now it's safe to destructure
-				const { type, response, astraResults, results, message, sessionId } = event.data;
+						sendMessageToParent('vectorSearch', query); // Pass 'vectorSearch' as type
+					}
 
-				if (type === 'chatResponse') {
-                showLoading('chat', false);
-                disableInput('chat', false);
-                const rawBotText = response;
-                const formattedMessage = formatBotResponse(rawBotText, astraResults);
-                addChatMessage('bot', formattedMessage, rawBotText); // Pass raw text
+					// --- Event Listeners ---
+					startChatButton.addEventListener('click', handleUserInfoSubmit);
+					chatSendButton.addEventListener('click', handleSendChat);
+					chatInput.addEventListener('keypress', (e) => {
+						if (e.key === 'Enter' && !e.shiftKey) {
+							e.preventDefault();
+							handleSendChat();
+						}
+					});
+					searchButton.addEventListener('click', handleVectorSearch);
+					searchInput.addEventListener('keypress', (e) => {
+						if (e.key === 'Enter' && !e.shiftKey) {
+							e.preventDefault();
+							handleVectorSearch();
+						}
+					});
+					// --- NEW: Listeners for top-right buttons ---
+					copyLastButton.addEventListener('click', () => handleCopyLast(copyLastButton));
+					shareChatButton.addEventListener('click', handleShareChat);
 
-                // --- NEW: Update state for action buttons ---
-                lastBotMessageRawText = rawBotText; // Store raw text
-                if (sessionId) { currentSessionId = sessionId; } // Store session ID if received
-                chatActionsContainer.classList.remove('hidden'); // Show action buttons
-                copyLastButton.disabled = false;
-                shareChatButton.disabled = !navigator.share || !currentSessionId; // Disable share if no share API or session ID
-                // --- End Update ---
+					// --- Listen for messages FROM Parent ---
+					window.addEventListener('message', (event) => {
+						console.log('Parent Listener: Message EVENT received! Origin:', event.origin, 'Data:', event.data);
+						// SECURITY: Origin check
+						const allowedOrigins = [
+							'https://alumglass.com',
+							'http://localhost:8787',
+							'http://127.0.0.1:8787',
+							'http://localhost:3000',
+							'http://127.0.0.1:3000',
+						];
+						// Use RegExp constructor for safety inside template literal
+						const localhostRegex = new RegExp('^http:\\/\\/localhost:\\d+$');
+						const loopbackRegex = new RegExp('^http:\\/\\/127\\.0\\.0\\.1:\\d+$');
+						const isAllowedOrigin =
+							allowedOrigins.includes(event.origin) || localhostRegex.test(event.origin) || loopbackRegex.test(event.origin);
+						console.log('Parent: Processing valid message from widget:', event.data);
 
-                chatProcessing = false;
-            }
-				 else if (type === 'chatError') {
-									showLoading('chat', false);
-									disableInput('chat', false);
-									showError('chat', message || '...');
-									chatProcessing = false;
-								} else if (type === 'vectorSearchResponse') {
-									showLoading('search', false);
-									disableInput('search', false);
-									displaySearchResults(results);
-									searchProcessing = false;
-								} else if (type === 'vectorSearchError') {
-									showLoading('search', false);
-									disableInput('search', false);
-									showError('search', message || 'یک خطای ناشناخته در جستجوی برداری رخ داد.');
-									resultsDiv.innerHTML = '';
-									searchProcessing = false;
-								}
-							});
-							// --- NEW: Initial UI Setup based on localStorage ---
-        function initializeWidgetView() {
-             try {
-                 if (localStorage.getItem(INFO_SUBMITTED_KEY) === 'true') {
-                     console.log("Widget: Info previously submitted flag found. Showing chat input.");
-                     userInfoForm.classList.add('hidden');
-                     chatInputArea.classList.remove('hidden');
-                 } else {
-                      console.log("Widget: No info submitted flag found. Showing info form.");
-                     userInfoForm.classList.remove('hidden'); // Ensure form is visible
-                     chatInputArea.classList.add('hidden'); // Ensure chat is hidden
-                 }
-             } catch (e) {
-                  console.error("Widget: Error accessing localStorage on init", e);
-                  // Default to showing the form if localStorage fails
-                  userInfoForm.classList.remove('hidden');
-                  chatInputArea.classList.add('hidden');
-             }
-        }
-			  // Run initialization logic when the script loads
-        initializeWidgetView();
-        // --- End Initial UI Setup ---
+						// *** CORRECTION: Add safety check for event.data and event.data.type ***
+						if (typeof event.data !== 'object' || event.data === null || !event.data.hasOwnProperty('type')) {
+							console.warn('Widget: Received malformed/typeless message data from parent:', event.data);
+							return; // Ignore message without a 'type'
+						}
+						// *** End Correction ***
+						if (!isAllowedOrigin) return;
+						if (typeof event.data !== 'object' || event.data === null || !event.data.hasOwnProperty('type')) return;
+						console.log('Widget: Message received from parent:', event.data);
+						// Now it's safe to destructure
+						const { type, response, astraResults, results, message, sessionId } = event.data;
+
+						if (type === 'chatResponse') {
+							showLoading('chat', false);
+							disableInput('chat', false);
+							const rawBotText = response;
+							const formattedMessage = formatBotResponse(rawBotText, astraResults);
+							addChatMessage('bot', formattedMessage, rawBotText); // Pass raw text
+
+							// --- NEW: Update state for action buttons ---
+							lastBotMessageRawText = rawBotText; // Store raw text
+							if (sessionId) {
+								currentSessionId = sessionId;
+							} // Store session ID if received
+							chatActionsContainer.classList.remove('hidden'); // Show action buttons
+							copyLastButton.disabled = false;
+							shareChatButton.disabled = !navigator.share || !currentSessionId; // Disable share if no share API or session ID
+							// --- End Update ---
+
+							chatProcessing = false;
+						} else if (type === 'chatError') {
+							showLoading('chat', false);
+							disableInput('chat', false);
+							showError('chat', message || '...');
+							chatProcessing = false;
+						} else if (type === 'vectorSearchResponse') {
+							showLoading('search', false);
+							disableInput('search', false);
+							displaySearchResults(results);
+							searchProcessing = false;
+						} else if (type === 'vectorSearchError') {
+							showLoading('search', false);
+							disableInput('search', false);
+							showError('search', message || 'یک خطای ناشناخته در جستجوی برداری رخ داد.');
+							resultsDiv.innerHTML = '';
+							searchProcessing = false;
+						}
+					});
 				</script>
 			</body>
 		</html>
 	`;
-	// Combined HTML for Chat and Vector Search within the widget
-	return htmlnewLocal;
 };
 
 // --- Hono App Setup ---
@@ -1044,7 +1095,7 @@ app.post('/api/webchat', async (c) => {
 	}
 
 	// Destructure potentially incoming userInfo
-	const { text } = requestData;
+	const { text, userInfo } = requestData;
 	if (typeof text !== 'string' || !text) {
 		// Add check here too
 		console.error(`Worker: Invalid 'text' received in /api/webchat request for session ${sessionId}. Received:`, text);
@@ -1053,7 +1104,11 @@ app.post('/api/webchat', async (c) => {
 	if (!sessionId) return c.json({ error: 'Session ID not found.' }, 500);
 
 	// Logging...
-	console.log(`Worker: /api/webchat request for session ${sessionId}: "${text}"`); // Simplified log
+	if (userInfo) {
+		console.log(`Worker: /api/webchat request for session ${sessionId} WITH UserInfo:`, userInfo, `Text: "${text}"`);
+	} else {
+		console.log(`Worker: /api/webchat request for session ${sessionId}: "${text}"`);
+	}
 
 	try {
 		// 1. Fetch Chat History
@@ -1068,12 +1123,13 @@ app.post('/api/webchat', async (c) => {
 		// 3. Perform RAG Query (passing history)
 		console.log('Worker: Performing RAG query for chat (with history)...');
 		const { response: botResponseText, astraResults } = await queryGeminiChatWeb(
-			text,
+			// Renamed to botResponseText for clarity
+			text, // Pass the user text string
 			searchResults,
 			history,
-			null, // Pass null for userInfo
+			userInfo,
 			c.env,
-			text
+			text // Pass original text again for originalQuery param
 		);
 		console.log(`Worker: RAG query complete. Found ${astraResults?.length ?? 0} Astra results.`);
 
@@ -1081,6 +1137,7 @@ app.post('/api/webchat', async (c) => {
 		await saveChatMessage(db, sessionId, 'user', text);
 		if (typeof botResponseText === 'string') {
 			await saveChatMessage(db, sessionId, 'bot', botResponseText);
+			console.log(`Worker: Messages saved for session ${sessionId}.`);
 		} else {
 			console.error(`Worker: Bot response was not a string for session ${sessionId}, cannot save to D1. Type: ${typeof botResponseText}`);
 			// Optionally save a placeholder or log more details
@@ -1089,8 +1146,8 @@ app.post('/api/webchat', async (c) => {
 		// 5. Return response
 		return c.json({
 			response: botResponseText,
-			astraResults,
-			sessionId,
+			astraResults: astraResults,
+			sessionId: sessionId, // Include session ID for the widget
 		});
 	} catch (error) {
 		console.error(`Worker: /api/webchat Error for session ${sessionId}:`, error, error.stack);
@@ -1372,7 +1429,7 @@ async function sepSearch(query) {
 
 // Gemini Chat for Web
 // Gemini Chat for Web (Corrected API Key Usage)
-async function queryGeminiChatWeb(text, searchResults, chatHistory, _userInfo_ignored, env, originalQuery = null) {
+async function queryGeminiChatWeb(text, searchResults, chatHistory, userInfo, env, originalQuery = null) {
 	// Added chatHistory param
 	// --- CORRECTION: Check for the correct Gemini Web API Key ---
 	if (!env.GEMINI_API_KEY_WEB) {
@@ -1438,7 +1495,12 @@ async function queryGeminiChatWeb(text, searchResults, chatHistory, _userInfo_ig
 		console.error('Worker: Chat AstraDB Error:', astraError);
 		astraDocs = 'خطا در جستجوی پایگاه داده.';
 	}
-	const userInfoForPrompt = 'کاربر گرامی'; // Revert to default
+	let userInfoForPrompt = 'کاربر گرامی'; // Default
+	if (userInfo && (userInfo.firstName || userInfo.lastName)) {
+		userInfoForPrompt = `${userInfo.firstName || ''} ${userInfo.lastName || ''}`.trim();
+	} else if (userInfo && userInfo.phone) {
+		userInfoForPrompt = `کاربر با شماره ${userInfo.phone}`; // Example if only phone is provided
+	}
 	const queryForPrompt = originalQuery || text;
 	// --- Build the Final Prompt (INCLUDING HISTORY) ---
 	const prompt = `
@@ -1482,8 +1544,7 @@ You are AlumGlass, a highly specialized AI assistant providing expert guidance o
 *   **Web Search Results (Supplementary - LOWER PRIORITY):**
     ${formattedSearchResults}
     *Cite using format: بر اساس نتیجه جستجوی وب از [منبع] با عنوان '[عنوان]'...*
-**Instructions:**
-Based on the **Previous Conversation History** and the **Current User Query**, generate a helpful, accurate, Persian response. Use the **Available Information** to enhance your answer, prioritizing official regulations. Cite sources. State confidence level. Do not mention user information unless they provide it explicitly in the current query.
+
 **Final Output Instruction:**
 Generate **ONLY** the comprehensive, well-cited, Persian response for the user, following all directives above. Do NOT output your internal thought process, self-review checklist, or comments about the search process for Knowledge Base Documents.
 `;
