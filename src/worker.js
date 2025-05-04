@@ -99,7 +99,7 @@ async function saveChatMessage(db, sessionId, role, content) {
 // --- Widget HTML/CSS/JS ---
 const renderWidget = () => {
 	// Add base URL dynamically for constructing share links later
-	const widgetBaseUrl = 'https://bhrwidget.aihoore.ir';
+	//const widgetBaseUrl = 'https://bhrwidget.aihoore.ir';
 	// Combined HTML for Chat and Vector Search within the widget
 	return html`
 		<!DOCTYPE html>
@@ -467,11 +467,11 @@ const renderWidget = () => {
 					#user-info-form {
 						padding: 1rem 0.5rem;
 						border-top: 1px solid #333;
-						margin-top: auto; /* Push to bottom */
+						margin-top: auto;
 					}
 					#user-info-form .form-grid {
 						display: grid;
-						grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Responsive grid */
+						grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 						gap: 0.75rem;
 						margin-bottom: 1rem;
 					}
@@ -481,8 +481,7 @@ const renderWidget = () => {
 						margin-bottom: 0.25rem;
 						color: #ccc;
 					}
-					#user-info-form input[type='text'],
-					#user-info-form input[type='tel'] {
+					#user-info-form input[type="text"], #user-info-form input[type="tel"], #user-info-form input[type="email"] /* Added email */ {
 						width: 100%;
 						background-color: #2d2d2d;
 						color: #e0e0e0;
@@ -498,8 +497,8 @@ const renderWidget = () => {
 						box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
 					}
 					#user-info-form button {
-						width: 100%; /* Full width button */
-						background-color: #16a34a; /* Green */
+						width: 100%;
+						background-color: #16a34a;
 						color: white;
 						padding: 0.6rem 1rem;
 						border: none;
@@ -508,6 +507,7 @@ const renderWidget = () => {
 						transition: background-color 0.2s ease;
 						font-family: 'Vazirmatn', sans-serif;
 						font-weight: 600;
+						margin-top: 0.5rem; /* Add margin top */
 					}
 					#user-info-form button:hover {
 						background-color: #15803d;
@@ -518,12 +518,43 @@ const renderWidget = () => {
 						text-align: right;
 						margin-bottom: 1rem;
 					}
-					/* Initially hide chat input area */
-					#chat-input-area.hidden {
+					/* --- ADDED: Styles for Remember Me Checkbox --- */
+					.remember-me-container {
+						display: flex;
+						align-items: center;
+						gap: 0.5rem;
+						margin-bottom: 1rem;
+						cursor: pointer; /* Make the label clickable */
+					}
+					.remember-me-container input[type='checkbox'] {
+						cursor: pointer;
+						accent-color: #3b82f6; /* Style checkbox color */
+						width: 16px;
+						height: 16px;
+					}
+					.remember-me-container label {
+						font-size: 0.9em;
+						color: #bbb;
+						margin-bottom: 0; /* Remove default label margin */
+						user-select: none; /* Prevent text selection */
+					}
+					/* --- End Remember Me Styles --- */
+					#chat-input-area.hidden,
+					#user-info-form.hidden {
 						display: none;
 					}
-					/* --- End User Info Form Styles --- */
 
+					/* --- ADDED: Styles for Welcome Message --- */
+					#welcome-back-message {
+						font-size: 0.9em;
+						color: #a0a0a0;
+						text-align: right;
+						padding: 0.5rem 0.75rem;
+						margin-bottom: 0.5rem;
+						border-bottom: 1px solid #333;
+						display: none; /* Hidden by default */
+					}
+					/* --- End Welcome Message Styles --- */
 					/* --- ADDED: Styles for Copy/Share buttons --- */
 					#chat-actions-container {
 						position: absolute;
@@ -618,28 +649,29 @@ const renderWidget = () => {
 						<div id="chat-error" class="error-message general-error"></div>
 						<!-- Dedicated error div -->
 						<!-- ADDED: User Info Form (Initially Visible) -->
-						<div id="user-info-form">
-							<p id="user-info-note">پر کردن موارد زیر اختیاری است.</p>
+						<form id="user-info-form">
+							<!-- Use form element -->
+							<p id="user-info-note">برای تجربه بهتر، می‌توانید اطلاعات زیر را وارد کنید (اختیاری).</p>
 							<div class="form-grid">
 								<div>
-									<label for="user-first-name">نام</label>
-									<input type="text" id="user-first-name" name="firstName" />
+									<label for="user-name">نام و نام خانوادگی</label>
+									<input type="text" id="user-name" name="name" />
 								</div>
 								<div>
-									<label for="user-last-name">نام خانوادگی</label>
-									<input type="text" id="user-last-name" name="lastName" />
-								</div>
-								<div>
-									<label for="user-phone">تلفن</label>
-									<input type="tel" id="user-phone" name="phone" />
-								</div>
-								<div>
-									<label for="user-address">آدرس</label>
-									<input type="text" id="user-address" name="address" />
+									<label for="user-contact">ایمیل یا تلفن</label>
+									<input type="text" id="user-contact" name="contact" />
+									<!-- Generic text input -->
 								</div>
 							</div>
-							<button id="start-chat-button">شروع گفتگو</button>
-						</div>
+							<!-- ADDED: Remember Me Checkbox -->
+							<div class="remember-me-container">
+								<input type="checkbox" id="remember-me" name="rememberMe" />
+								<label for="remember-me">مرا در این دستگاه به خاطر بسپار</label>
+							</div>
+							<!-- End Remember Me -->
+							<button type="submit" id="start-chat-button">شروع گفتگو</button>
+							<!-- Changed to type="submit" -->
+						</form>
 						<!-- End User Info Form -->
 						<!-- Chat Input Area (Initially Hidden) -->
 						<div id="chat-input-area" class="input-area hidden">
@@ -678,17 +710,19 @@ const renderWidget = () => {
 
 				<script>
 					const md = new markdownit({ breaks: true, linkify: true, typographer: true });
+					// --- DOM References ---
 					const userInfoForm = document.getElementById('user-info-form');
 					const startChatButton = document.getElementById('start-chat-button');
+					const userNameInput = document.getElementById('user-name');
+					const userContactInput = document.getElementById('user-contact');
+					const rememberMeCheckbox = document.getElementById('remember-me');
+					const welcomeBackMessage = document.getElementById('welcome-back-message');
 					const chatInputArea = document.getElementById('chat-input-area');
-
-					// --- DOM Element References ---
 					const chatInput = document.getElementById('chat-input');
 					const chatSendButton = document.getElementById('chat-send-button');
 					const chatMessagesDiv = document.getElementById('chat-messages');
 					const chatErrorDiv = document.getElementById('chat-error');
 					const chatLoadingDiv = document.getElementById('chat-loading');
-
 					const searchInput = document.getElementById('searchInput');
 					const searchButton = document.getElementById('searchButton');
 					const searchErrorDiv = document.getElementById('search-error');
@@ -700,9 +734,13 @@ const renderWidget = () => {
 
 					let chatProcessing = false;
 					let searchProcessing = false;
-					let collectedUserInfo = null; // Variable to store user info temporarily
+					let rememberedUserInfo = null; // Store info retrieved from localStorage
 					let lastBotMessageRawText = '';
 					let currentSessionId = null; // Will be populated from API response
+					// --- LocalStorage Keys ---
+					const LS_REMEMBER_FLAG = 'alumglass_remember_me';
+					const LS_USER_NAME = 'alumglass_user_name';
+					const LS_USER_CONTACT = 'alumglass_user_contact';
 
 					// --- Utility Functions ---
 					function showLoading(indicatorType, show) {
@@ -737,7 +775,6 @@ const renderWidget = () => {
 					}
 
 					// --- Message Handling Functions ---
-					// --- Message Handling & Actions ---
 					function addChatMessage(sender, message, rawText = '') {
 						const messageDiv = document.createElement('div');
 						messageDiv.classList.add('message-base');
@@ -759,7 +796,7 @@ const renderWidget = () => {
 						chatMessagesDiv.scrollTo({ top: chatMessagesDiv.scrollHeight, behavior: 'smooth' });
 					}
 
-					// --- NEW: Copy Handler ---
+					// --- Copy Handler ---
 					async function handleCopyLast(buttonElement) {
 						if (!lastBotMessageRawText) return; // Nothing to copy
 						if (!navigator.clipboard) {
@@ -784,7 +821,7 @@ const renderWidget = () => {
 						}
 					}
 
-					// --- NEW: Share Handler ---
+					// ---Share Handler ---
 					async function handleShareChat() {
 						if (!currentSessionId) {
 							showError('chat', 'شناسه گفتگو برای اشتراک‌گذاری یافت نشد.');
@@ -920,41 +957,111 @@ const renderWidget = () => {
 							else searchProcessing = false;
 						}
 					}
+					// --- Initialization Function ---
+					function initializeWidget() {
+						const shouldRemember = localStorage.getItem(LS_REMEMBER_FLAG) === 'true';
+
+						if (shouldRemember) {
+							const name = localStorage.getItem(LS_USER_NAME) || '';
+							const contact = localStorage.getItem(LS_USER_CONTACT) || '';
+							console.log("Widget: Found 'Remember Me' flag. Name:", name, 'Contact:', contact);
+
+							rememberedUserInfo = {
+								// Populate global var
+								name: name || null,
+								contact: contact || null,
+							};
+
+							// Show welcome message
+							if (name) {
+								welcomeBackMessage.textContent = \`خوش آمدید، \${name}!\`;
+							} else {
+								welcomeBackMessage.textContent = \`خوش آمدید!\`;
+							}
+							welcomeBackMessage.style.display = 'block';
+
+							// Hide form, show chat immediately
+							userInfoForm.classList.add('hidden');
+							chatInputArea.classList.remove('hidden');
+							addInitialBotMessage('چگونه می‌توانم به شما کمک کنم؟'); // Add a follow-up greeting
+							chatInput.focus();
+						} else {
+							console.log("Widget: No 'Remember Me' flag found. Showing info form.");
+							// Ensure form is visible and chat is hidden
+							userInfoForm.classList.remove('hidden');
+							chatInputArea.classList.add('hidden');
+							addInitialBotMessage(
+								'سلام! من مشاور هوش مصنوعی AlumGlass هستم. برای شروع گفتگو و شخصی‌سازی پاسخ‌ها، لطفاً اطلاعات زیر را (اختیاری) وارد نمایید.'
+							);
+						}
+						// Clear chat messages on initial load? Optional.
+						// chatMessagesDiv.innerHTML = '';
+					}
+					// Helper to add initial bot messages
+					function addInitialBotMessage(text) {
+						// Check if the message already exists to avoid duplicates on potential re-renders
+						const existingMessages = chatMessagesDiv.querySelectorAll('.bot-message');
+						let alreadyExists = false;
+						existingMessages.forEach((msg) => {
+							if (msg.textContent.includes(text)) {
+								alreadyExists = true;
+							}
+						});
+
+						if (!alreadyExists) {
+							const initialMsgDiv = document.createElement('div');
+							initialMsgDiv.classList.add('bot-message', 'message-base');
+							initialMsgDiv.textContent = text;
+							chatMessagesDiv.appendChild(initialMsgDiv);
+						}
+					}
 
 					// --- Event Handlers ---
-					// --- NEW: Handle User Info Form Submission ---
 					function handleUserInfoSubmit(event) {
-						event.preventDefault(); // Prevent default form submission
-						const firstName = document.getElementById('user-first-name').value.trim();
-						const lastName = document.getElementById('user-last-name').value.trim();
-						const phone = document.getElementById('user-phone').value.trim();
-						const address = document.getElementById('user-address').value.trim();
+						event.preventDefault();
+						const name = userNameInput.value.trim();
+						const contact = userContactInput.value.trim();
+						const remember = rememberMeCheckbox.checked;
 
-						collectedUserInfo = {
-							// Store locally in the widget script's scope
-							firstName: firstName || null, // Send null if empty
-							lastName: lastName || null,
-							phone: phone || null,
-							address: address || null,
+						const userInfoToSend = {
+							name: name || null,
+							contact: contact || null,
 						};
-						console.log('Widget: User info collected:', collectedUserInfo);
+						console.log('Widget: User info submitted:', userInfoToSend, 'Remember:', remember);
 
-						// Send user info to parent (optional, depends if parent needs it directly)
-						// sendMessageToParent('userInfoCollected', { userInfo: collectedUserInfo });
+						if (remember) {
+							localStorage.setItem(LS_REMEMBER_FLAG, 'true');
+							localStorage.setItem(LS_USER_NAME, name);
+							localStorage.setItem(LS_USER_CONTACT, contact);
+							rememberedUserInfo = userInfoToSend; // Also set global var for immediate use
+							console.log('Widget: Saved info to localStorage.');
+						} else {
+							// Clear localStorage if user unchecks 'Remember Me' later (or on submit)
+							localStorage.removeItem(LS_REMEMBER_FLAG);
+							localStorage.removeItem(LS_USER_NAME);
+							localStorage.removeItem(LS_USER_CONTACT);
+							rememberedUserInfo = null; // Clear global var if not remembering
+							console.log('Widget: Cleared info from localStorage.');
+						}
 
 						// Hide form, show chat
 						userInfoForm.classList.add('hidden');
 						chatInputArea.classList.remove('hidden');
-						chatInput.focus(); // Focus the chat input
+						welcomeBackMessage.style.display = 'none'; // Hide welcome message if it was shown
+						if (rememberedUserInfo && rememberedUserInfo.name) {
+							// Add personalized greeting
+							addInitialBotMessage(\`ممنون، \${rememberedUserInfo.name}. حالا می‌توانید سوال خود را بپرسید.\`);
+						} else {
+							addInitialBotMessage('ممنون. حالا می‌توانید سوال خود را بپرسید.');
+						}
+						chatInput.focus();
 					}
 
-					// Modified Chat Handler
 					async function handleSendChat() {
 						const message = chatInput.value.trim();
 						if (!message || chatProcessing) return;
 
 						chatProcessing = true;
-						// Pass raw message text to addChatMessage
 						addChatMessage('user', message, message);
 						chatInput.value = '';
 						disableInput('chat', true);
@@ -963,13 +1070,19 @@ const renderWidget = () => {
 
 						// Prepare data to send
 						const messageData = { text: message };
-						// Include user info ONLY if we just collected it and haven't sent it yet
-						if (collectedUserInfo) {
-							messageData.userInfo = collectedUserInfo;
-							collectedUserInfo = null; // Clear it after sending once
+
+						// Check if we have *remembered* info (from localStorage init or form submit)
+						// Only send it on the *first* message after initialization/form submit
+						// We need a flag to track if we've already sent the info for this "session start"
+						if (rememberedUserInfo) {
+							messageData.userInfo = rememberedUserInfo;
+							// Clear it so it's not sent with *every* message,
+							// only the first one after loading/submitting the form.
+							// The backend now relies on the cookie session for context.
+							rememberedUserInfo = null;
 						}
 
-						sendMessageToParent('chatMessage', messageData); // Send object
+						sendMessageToParent('chatMessage', messageData);
 					}
 
 					async function handleVectorSearch() {
@@ -1071,6 +1184,8 @@ const renderWidget = () => {
 							searchProcessing = false;
 						}
 					});
+					// --- Initialize on Load ---
+					document.addEventListener('DOMContentLoaded', initializeWidget);
 				</script>
 			</body>
 		</html>
