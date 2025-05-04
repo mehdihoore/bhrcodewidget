@@ -1,0 +1,131 @@
+<!-- This outer container helps with centering -->
+<div id="widget-page-container">
+
+    <!-- This container holds the iframe and defines its size -->
+    <div id="ai-widget-iframe-container">
+        <iframe id="ai-widget-iframe" src="https://bhrwidget.aihoore.ir/widget" /* Make sure this URL is correct */
+            style="width: 100%; height: 100%; border: none; display: block;" /* Style iframe directly */
+            title="AlumGlass AI مشاور" allow="clipboard-write"></iframe>
+    </div>
+
+</div>
+
+<!-- IMPORTANT: Your Parent Page JavaScript for communication goes AFTER this -->
+<!-- You likely already have this script added elsewhere if using across site -->
+<!-- If adding ONLY for this page, place it here -->
+<script>
+    // --- PARENT PAGE JAVASCRIPT from previous step ---
+    // Get reference to the iframe
+    const widgetIframe = document.getElementById('ai-widget-iframe');
+
+    // Define constants for the worker URLs and origin
+    const widgetWorkerBaseUrl = 'https://bhrwidget.aihoore.ir'; // Your worker URL base
+    const widgetOrigin = widgetWorkerBaseUrl; // The expected origin of the iframe's content
+    const widgetWorkerChatApiUrl = `${widgetWorkerBaseUrl}/api/webchat`;
+    const widgetWorkerSearchApiUrl = `${widgetWorkerBaseUrl}/api/widget-search`;
+
+    // Check if the iframe element was found before adding the listener
+    if (widgetIframe) {
+        console.log("Parent Script (alumglass.com): Found widget iframe. Attaching message listener.");
+
+        window.addEventListener('message', async (event) => {
+        console.log("Parent Listener (alumglass.com): Message EVENT received! Origin:", event.origin, "Data:", event.data);
+
+        // --- SECURITY CHECK ---
+        if (event.origin !== widgetOrigin) { console.warn(`Parent Listener: IGNORED message from unexpected origin: ${event.origin}. Expected: ${widgetOrigin}`); return; }
+
+        // --- Data Validation ---
+        if (typeof event.data !== 'object' || event.data === null || !event.data.hasOwnProperty('type')) { console.warn("Parent Listener: IGNORED malformed/typeless message data from widget:", event.data); return; }
+
+        console.log("Parent Listener: Processing VALID message from widget:", event.data);
+        // Destructure type first
+        const { type } = event.data;
+
+        // --- Handle CHAT Message ---
+         if (type === 'chatMessage') {
+            // --- CORRECTION: Extract nested text and userInfo ---
+            let userQueryText = null;
+            let userInfoObject = null;
+
+            // Check if event.data.text exists and is an object (as seen in logs)
+            // OR handle the case where it might be the flat structure we originally intended
+            if (typeof event.data.text === 'object' && event.data.text !== null && event.data.text.hasOwnProperty('text')) {
+                 userQueryText = event.data.text.text; // Extract nested text
+                 userInfoObject = event.data.text.userInfo; // Extract nested userInfo
+                 console.log("Parent: Extracted nested text and userInfo.");
+            } else if (typeof event.data.text === 'string') {
+                 // Handle the case where the widget might send the flat structure correctly in the future
+                 userQueryText = event.data.text;
+                 userInfoObject = event.data.userInfo; // Get from top level if text is flat
+                 console.log("Parent: Extracted flat text and userInfo.");
+            } else {
+                 console.error("Parent: Received chatMessage but could not extract text string. Data:", event.data);
+                 // Optionally send error back to widget
+                 if (widgetIframe.contentWindow) {
+                     widgetIframe.contentWindow.postMessage({ type: 'chatError', message: 'Failed to read message text in parent window.' }, widgetOrigin);
+                 }
+                 return; // Don't proceed
+            }
+
+            // --- Prepare body correctly ---
+             const requestBody = { text: userQueryText }; // Use the extracted text string
+             if (userInfoObject) {
+                  requestBody.userInfo = userInfoObject; // Add the extracted userInfo
+             }
+
+             // --- End Correction ---
+                 console.log(`Parent: Handling 'chatMessage'. Calling API: ${widgetWorkerChatApiUrl} with body:`, JSON.stringify(requestBody));
+                try {
+                const response = await fetch(widgetWorkerChatApiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody), // Send the corrected body
+                });
+
+                    console.log(`Parent: API call for chat completed. Status: ${response.status}`);
+                    if (!response.ok) { let e = { m: `API Chat Error: ${response.status}` }; try { e.m = (await response.json()).error || e.m; } catch { } throw new Error(e.m); }
+                    const result = await response.json();
+                    console.log("Parent: Parsed chat API result:", result);
+                    if (widgetIframe.contentWindow) {
+                        const msg = { type: 'chatResponse', response: result.response, astraResults: result.astraResults };
+                        console.log("Parent: Sending 'chatResponse' back to widget origin:", widgetOrigin);
+                        widgetIframe.contentWindow.postMessage(msg, widgetOrigin);
+                    } else { console.error("Parent: Cannot find widget contentWindow (chat response)."); }
+                } catch (error) {
+                    console.error('Parent Error handling chat message:', error);
+                    if (widgetIframe.contentWindow) {
+                        const eMsg = { type: 'chatError', message: error.message || 'Unknown chat error in parent.' };
+                        console.log("Parent: Sending 'chatError' back to widget origin:", widgetOrigin);
+                        widgetIframe.contentWindow.postMessage(eMsg, widgetOrigin);
+                    }
+                }
+            }
+            // --- Handle VECTOR SEARCH Message ---
+             else if (type === 'vectorSearch') {
+             // --- CORRECTION: Extract nested text for search too ---
+             let userSearchQuery = null;
+             if (typeof event.data.text === 'object' && event.data.text !== null && event.data.text.hasOwnProperty('text')) {
+                 userSearchQuery = event.data.text.text; // Extract nested text
+             } else if (typeof event.data.text === 'string') {
+                 userSearchQuery = event.data.text; // Handle flat structure
+             } else {
+                  console.error("Parent: Received vectorSearch but could not extract text string. Data:", event.data);
+                   if (widgetIframe.contentWindow) {
+                       widgetIframe.contentWindow.postMessage({ type: 'vectorSearchError', message: 'Failed to read search text in parent window.' }, widgetOrigin);
+                   }
+                  return; // Don't proceed
+             }
+             // --- End Correction ---
+
+             const requestBody = { text: userSearchQuery }; // Use extracted query
+             console.log(`Parent: Handling 'vectorSearch'. Calling API: ${widgetWorkerSearchApiUrl} with body:`, JSON.stringify(requestBody));
+             try { /* ... fetch API call for search ... */
+                 const response = await fetch(widgetWorkerSearchApiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody), }); console.log(`Parent: API call for search completed. Status: ${response.status}`); if (!response.ok) { let e = { m: `API Search Error: ${response.status}` }; try { e.m = (await response.json()).error || e.m; } catch {} throw new Error(e.m); } const results = await response.json(); console.log("Parent: Parsed search API result:", results); if (widgetIframe.contentWindow) { const msg = { type: 'vectorSearchResponse', results: results }; console.log("Parent: Sending 'vectorSearchResponse' back to widget origin:", widgetOrigin); widgetIframe.contentWindow.postMessage(msg, widgetOrigin); } else { console.error("Parent: Cannot find widget contentWindow (search response)."); }
+             } catch (error) { /* ... error handling ... */ console.error('Parent Error handling vector search:', error); if (widgetIframe.contentWindow) { const eMsg = { type: 'vectorSearchError', message: error.message || 'Unknown search error in parent.' }; console.log("Parent: Sending 'vectorSearchError' back to widget origin:", widgetOrigin); widgetIframe.contentWindow.postMessage(eMsg, widgetOrigin); } }
+        }
+        else { console.warn("Parent Listener: Received unknown message type:", type); }
+    });
+    } else {
+        console.error("Parent Script (alumglass.com): Could not find widget iframe element with ID 'ai-widget-iframe'. Listener NOT attached.");
+    }
+</script>
