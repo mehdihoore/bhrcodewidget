@@ -64,7 +64,7 @@ async function getChatHistory(db, sessionId, limit) {
 		return [];
 	}
 }
-// NEW: Function to get ALL history for a session
+// Function to get ALL history for a session
 async function getAllChatHistory(db, sessionId) {
 	if (!sessionId) return [];
 	try {
@@ -146,20 +146,78 @@ const renderWidget = () => {
 						display: flex;
 						flex-direction: column;
 						background-color: #121212;
+						/* No padding here, apply to inner containers */
+					}
+					.alumglass-widget {
+						font-family: 'Vazirmatn', sans-serif;
+						font-weight: 400;
+						color: #e0e0e0;
+						width: 100%;
+						height: 100%;
+						box-sizing: border-box;
+						overflow: hidden;
+						display: flex;
+						flex-direction: column;
+						background-color: #121212;
 						padding: 0.75rem;
 						gap: 0.75rem;
 					}
-
-					/* Section Styles */
-					.widget-section {
+					#tab-buttons {
+						display: flex;
 						background-color: #1e1e1e;
-						border: 1px solid #333;
-						border-radius: 0.375rem;
-						padding: 0.75rem;
+						border-bottom: 1px solid #333;
+						flex-shrink: 0; /* Prevent shrinking */
+					}
+					.tab-button {
+						flex-grow: 1; /* Equal width */
+						padding: 10px 15px;
+						cursor: pointer;
+						background-color: #1e1e1e;
+						border: none;
+						color: #aaa;
+						font-size: 1rem;
+						font-family: 'Vazirmatn', sans-serif;
+						border-left: 1px solid #333;
+						transition: background-color 0.2s, color 0.2s;
+					}
+					.tab-button:last-child {
+						border-left: none;
+					}
+					.tab-button:hover {
+						background-color: #2a2a2a;
+						color: #ccc;
+					}
+					.tab-button.active {
+						background-color: #2d2d2d;
+						color: #e0e0e0;
+						font-weight: 600;
+						border-bottom: 2px solid #3b82f6;
+					}
+					/* --- End Tab Button Styles --- */
+
+					/* --- ADDED: Tab Content Area --- */
+					#tab-content {
+						flex-grow: 1; /* Takes remaining vertical space */
+						overflow: hidden; /* Prevent overflow from container */
+						position: relative; /* For positioning elements inside */
+					}
+					.tab-pane {
+						width: 100%;
+						height: 100%;
+						box-sizing: border-box;
+						padding: 0.75rem; /* Padding inside the pane */
 						display: flex;
 						flex-direction: column;
+						overflow: hidden; /* Prevents inner content from overflowing the pane itself */
 					}
-					.widget-section h2 {
+					.tab-pane:not(.active) {
+						display: none;
+					} /* Hide inactive panes */
+					/* --- End Tab Content Area --- */
+
+					/* Section Styles */
+					.tab-pane h2 {
+						/* Style headings within panes */
 						font-size: 1.1rem;
 						font-weight: 600;
 						margin-bottom: 0.75rem;
@@ -167,8 +225,38 @@ const renderWidget = () => {
 						border-bottom: 1px solid #333;
 						color: #e0e0e0;
 						text-align: right;
+						flex-shrink: 0; /* Prevent shrinking */
 					}
-
+					/* Chat Styles (mostly within #chat-tab-content) */
+					#chat-messages {
+						/* Let messages div grow and scroll */
+						font-family: 'Lateef', serif;
+						flex-grow: 1;
+						overflow-y: auto;
+						margin-bottom: 0.75rem; /* Space before input */
+						padding: 0 0.5rem; /* Padding L/R */
+						scrollbar-width: thin;
+						scrollbar-color: #444 #1e1e1e;
+					}
+					#chat-messages::-webkit-scrollbar {
+						width: 8px;
+					}
+					#chat-messages::-webkit-scrollbar-track {
+						background: #1e1e1e;
+					}
+					#chat-messages::-webkit-scrollbar-thumb {
+						background-color: #444;
+						border-radius: 4px;
+					}
+					.message-base {
+						padding: 0.6rem 1rem;
+						border-radius: 0.5rem;
+						margin-bottom: 0.75rem;
+						max-width: 85%;
+						word-wrap: break-word;
+						font-size: 1.2em;
+						line-height: 1.7;
+					}
 					/* Chat Styles */
 					.chat-section {
 						flex-grow: 1;
@@ -209,13 +297,11 @@ const renderWidget = () => {
 					}
 					.user-message {
 						margin-left: auto;
-						margin-right: 0 !important;
 						text-align: right;
 						background-color: #2d4263;
 						color: #ffffff;
 					}
 					.bot-message {
-						margin-left: 0 !important;
 						margin-right: auto;
 						text-align: right;
 						background-color: #383838;
@@ -260,7 +346,8 @@ const renderWidget = () => {
 						display: flex;
 						gap: 0.5rem;
 						align-items: center;
-						margin-top: auto;
+						margin-top: auto; /* Push to bottom */
+						flex-shrink: 0;
 					}
 					.input-area input[type='text'] {
 						flex-grow: 1;
@@ -301,26 +388,24 @@ const renderWidget = () => {
 						flex-shrink: 0;
 					}
 					#results {
-						max-height: 250px;
+						/* Let results div grow and scroll */
+						flex-grow: 1;
 						overflow-y: auto;
 						margin-top: 0.75rem;
 						scrollbar-width: thin;
 						scrollbar-color: #444 #1e1e1e;
-						padding-right: 0.5rem;
+						padding: 0 0.5rem;
 					}
 					#results::-webkit-scrollbar {
 						width: 8px;
 					}
 					#results::-webkit-scrollbar-track {
 						background: #1e1e1e;
-						border-radius: 4px;
 					}
 					#results::-webkit-scrollbar-thumb {
 						background-color: #444;
 						border-radius: 4px;
-						border: 2px solid #1e1e1e;
 					}
-
 					.result-card {
 						background-color: #292929;
 						color: #e0e0e0;
@@ -329,11 +414,8 @@ const renderWidget = () => {
 						border-radius: 0.375rem;
 						margin-bottom: 0.75rem;
 						font-size: 0.9em;
-						/* --- MODIFICATION: Set direction for RTL --- */
 						direction: rtl;
-						/* --- End Modification --- */
 					}
-					/* --- MODIFICATION: Ensure text alignment is right for content --- */
 					.result-card h3 {
 						font-weight: 600;
 						color: #a5d6ff;
@@ -344,15 +426,12 @@ const renderWidget = () => {
 						margin-bottom: 0.25rem;
 						text-align: right;
 					}
-					/* --- End Modification --- */
 
 					.result-card .similarity {
 						font-size: 0.8em;
 						color: #9ca3af;
-						/* --- MODIFICATION: Align similarity left, set LTR direction --- */
 						text-align: left;
 						direction: ltr;
-						/* --- End Modification --- */
 					}
 					.result-card .metadata-grid {
 						display: grid;
@@ -361,23 +440,21 @@ const renderWidget = () => {
 						font-size: 0.85em;
 						margin-top: 0.5rem;
 					}
-					/* --- MODIFICATION: Ensure metadata text aligns right --- */
 					.result-card .metadata-grid p {
 						margin-bottom: 0;
 						text-align: right;
 					}
-					/* --- End Modification --- */
 					.result-card .metadata-grid strong {
 						color: #ccc;
 					}
 
-					/* Loading Indicators */
 					.loading-indicator {
 						text-align: center;
 						margin-top: 0.5rem;
 						font-size: 0.9em;
 						color: #9ca3af;
 						height: 24px;
+						flex-shrink: 0;
 					}
 					.loading-indicator.hidden {
 						display: none;
@@ -402,6 +479,7 @@ const renderWidget = () => {
 					/* General Error Div */
 					.general-error {
 						display: none;
+						flex-shrink: 0;
 					}
 					.astra-results-details {
 						margin-top: 1rem;
@@ -461,13 +539,13 @@ const renderWidget = () => {
 						font-size: 0.8em;
 						color: #777;
 						text-align: center; /* Center credits */
-						margin-top: 15px; /* Space above credits */
-						padding-bottom: 5px;
+						margin-top: auto;
+						padding-top: 10px;
+						flex-shrink: 0;
 					}
 					#user-info-form {
 						padding: 1rem 0.5rem;
-						border-top: 1px solid #333;
-						margin-top: auto;
+						flex-shrink: 0;
 					}
 					#user-info-form .form-grid {
 						display: grid;
@@ -553,20 +631,18 @@ const renderWidget = () => {
 						margin-bottom: 0.5rem;
 						border-bottom: 1px solid #333;
 						display: none; /* Hidden by default */
+						flex-shrink: 0;
 					}
-					/* --- End Welcome Message Styles --- */
-					/* --- ADDED: Styles for Copy/Share buttons --- */
 					#chat-actions-container {
 						position: absolute;
-						top: 10px; /* Position near top */
-						left: 15px; /* Position left (because of RTL default?) - adjust if needed */
-						z-index: 10; /* Ensure above messages */
+						top: 10px;
+						left: 15px;
+						z-index: 10;
 						display: flex;
 						gap: 8px;
-						direction: ltr; /* Ensure buttons layout LTR */
+						direction: ltr;
 					}
 					#chat-actions-container button {
-						/* Style buttons directly */
 						background-color: #555;
 						color: #eee;
 						border: none;
@@ -587,14 +663,14 @@ const renderWidget = () => {
 						opacity: 0.5;
 						cursor: not-allowed;
 					}
+					#chat-actions-container.hidden {
+						display: none;
+					}
+
 					#chat-actions-container button i {
 						margin-right: 0; /* Remove previous margin */
 					}
 					/* Hide initially */
-					#chat-actions-container.hidden {
-						display: none;
-					}
-					/* --- End Top-Right Action Button Styles --- */
 
 					.message-action-button {
 						background-color: #555; /* Darker gray */
@@ -619,14 +695,24 @@ const renderWidget = () => {
 			</head>
 			<body>
 				<div class="alumglass-widget">
-					<!-- Chat Section -->
-					<div class="widget-section chat-section">
-						<h2>گفتگو با هوش مصنوعی</h2>
-						<div id="welcome-back-message"></div>
-						<div id="chat-actions-container" class="hidden">
-							<button id="copy-last-button" disabled><i class="fas fa-copy"></i> کپی آخرین پاسخ</button>
-							<button id="share-chat-button" disabled><i class="fas fa-share-alt"></i> اشتراک گفتگو</button>
-						</div>
+
+         <!-- Tab Buttons -->
+         <div id="tab-buttons">
+             <button id="chat-tab-button" class="tab-button active">گفتگو</button>
+             <button id="search-tab-button" class="tab-button">جستجوی برداری</button>
+         </div>
+
+         <!-- Tab Content Area -->
+         <div id="tab-content">
+
+             <!-- Chat Tab Pane (Initially Active) -->
+             <div id="chat-tab-content" class="tab-pane active">
+                 <h2>گفتگو با هوش مصنوعی</h2>
+                 <div id="welcome-back-message" style="display: none;"></div> <!-- Welcome message -->
+                 <div id="chat-actions-container" class="hidden"> <!-- Actions -->
+                     <button id="copy-last-button" disabled><i class="fas fa-copy"></i> کپی آخرین پاسخ</button>
+                     <button id="share-chat-button" disabled><i class="fas fa-share-alt"></i> اشتراک گفتگو</button>
+                 </div>
 						<p class="explanation-text">
 							این دستیار از هوش مصنوعی پیشرفته به همراه جستجو در پایگاه داده تخصصی مباحث مقررات ملی ساختمان (روش RAG) برای ارائه پاسخ‌های
 							دقیق استفاده می‌کند. تاریخچه گفتگو برای بهبود زمینه پاسخ‌ها ذخیره می‌شود.
@@ -661,7 +747,7 @@ const renderWidget = () => {
 									<!-- Generic text input -->
 								</div>
 							</div>
-							<!-- ADDED: Remember Me Checkbox -->
+
 							<div class="remember-me-container">
 								<input type="checkbox" id="remember-me" name="rememberMe" />
 								<label for="remember-me">مرا در این دستگاه به خاطر بسپار</label>
@@ -679,9 +765,9 @@ const renderWidget = () => {
 						<!-- End Chat Input Area -->
 					</div>
 
-					<!-- Vector Search Section -->
-					<div class="widget-section search-section">
-						<h2>جستجوی برداری</h2>
+					<!-- Search Tab Pane (Initially Hidden) -->
+             <div id="search-tab-content" class="tab-pane">
+                 <h2>جستجوی برداری</h2>
 						<p class="explanation-text">مستقیماً در میان متون فنی و تخصصی پایگاه داده جستجو کنید.</p>
 						<div class="input-area">
 							<input id="searchInput" type="text" placeholder="عبارت جستجو برداری..." />
@@ -709,6 +795,10 @@ const renderWidget = () => {
 				<script>
 					const md = new markdownit({ breaks: true, linkify: true, typographer: true });
 					// --- DOM References ---
+					const chatTabButton = document.getElementById('chat-tab-button');
+					const searchTabButton = document.getElementById('search-tab-button');
+					const chatTabContent = document.getElementById('chat-tab-content');
+					const searchTabContent = document.getElementById('search-tab-content');
 					const userInfoForm = document.getElementById('user-info-form');
 					const startChatButton = document.getElementById('start-chat-button');
 					const userNameInput = document.getElementById('user-name');
@@ -955,6 +1045,25 @@ const renderWidget = () => {
 							else searchProcessing = false;
 						}
 					}
+						// --- Tab Switching Logic ---
+						function switchToTab(tabName) {
+							console.log("Widget: Switching to tab:", tabName);
+							// Update button active states
+							chatTabButton.classList.toggle('active', tabName === 'chat');
+							searchTabButton.classList.toggle('active', tabName === 'search');
+
+							// Update pane visibility
+							chatTabContent.classList.toggle('active', tabName === 'chat');
+							searchTabContent.classList.toggle('active', tabName === 'search');
+
+							// Optionally focus input in the newly active tab
+							if (tabName === 'chat' && !chatInputArea.classList.contains('hidden')) {
+								chatInput.focus();
+							} else if (tabName === 'search') {
+								searchInput.focus();
+							}
+						}
+
 					// --- Initialization Function ---
 					function initializeWidget() {
 						const shouldRemember = localStorage.getItem(LS_REMEMBER_FLAG) === 'true';
@@ -1097,6 +1206,8 @@ const renderWidget = () => {
 					}
 
 					// --- Event Listeners ---
+					chatTabButton.addEventListener('click', () => switchToTab('chat'));
+        			searchTabButton.addEventListener('click', () => switchToTab('search'));
 					startChatButton.addEventListener('click', handleUserInfoSubmit);
 					chatSendButton.addEventListener('click', handleSendChat);
 					chatInput.addEventListener('keypress', (e) => {
@@ -1112,7 +1223,7 @@ const renderWidget = () => {
 							handleVectorSearch();
 						}
 					});
-					// --- NEW: Listeners for top-right buttons ---
+					// --- Listeners for top-right buttons ---
 					copyLastButton.addEventListener('click', () => handleCopyLast(copyLastButton));
 					shareChatButton.addEventListener('click', handleShareChat);
 
@@ -1134,7 +1245,7 @@ const renderWidget = () => {
 							allowedOrigins.includes(event.origin) || localhostRegex.test(event.origin) || loopbackRegex.test(event.origin);
 						console.log('Parent: Processing valid message from widget:', event.data);
 
-						// *** CORRECTION: Add safety check for event.data and event.data.type ***
+						// ***Add safety check for event.data and event.data.type ***
 						if (typeof event.data !== 'object' || event.data === null || !event.data.hasOwnProperty('type')) {
 							console.warn('Widget: Received malformed/typeless message data from parent:', event.data);
 							return; // Ignore message without a 'type'
@@ -1153,7 +1264,7 @@ const renderWidget = () => {
 							const formattedMessage = formatBotResponse(rawBotText, astraResults);
 							addChatMessage('bot', formattedMessage, rawBotText); // Pass raw text
 
-							// --- NEW: Update state for action buttons ---
+							// --- Update state for action buttons ---
 							lastBotMessageRawText = rawBotText; // Store raw text
 							if (sessionId) {
 								currentSessionId = sessionId;
@@ -1183,7 +1294,10 @@ const renderWidget = () => {
 						}
 					});
 					// --- Initialize on Load ---
-					document.addEventListener('DOMContentLoaded', initializeWidget);
+					 document.addEventListener('DOMContentLoaded', () => {
+							initializeWidget();
+							switchToTab('chat'); // Ensure chat tab is active by default
+						});
 				</script>
 			</body>
 		</html>
@@ -1276,7 +1390,7 @@ app.post('/api/widget-search', async (c) => {
 		if (!text) return c.json({ error: 'لطفا عبارتی برای جستجو وارد کنید' }, 400);
 
 		console.log('Widget Worker: Generating embedding for vector search...');
-		// --- CORRECTION: Pass ONLY the text string ---
+		// ---Pass ONLY the text string ---
 		const embedding = await generateEmbedding(text, c.env);
 		// --- End Correction ---
 
@@ -1408,7 +1522,7 @@ async function ddgSearch(query) {
 		while ((match = regex.exec(html)) !== null && results.length < 5) {
 			try {
 				const rawUrl = match[1];
-				// *** CORRECTION: Use proper entity names ***
+				// ***Use proper entity names ***
 				const title = match[2]
 					.replace(/<[^>]+>/g, '')
 					.replace(/&/g, '&')
@@ -1425,7 +1539,7 @@ async function ddgSearch(query) {
 					'gs'
 				); // Escape quotes in href for regex
 				const snippetMatch = snippetRegex.exec(html);
-				// *** CORRECTION: Use proper entity names ***
+				// ***Use proper entity names ***
 				const description = snippetMatch
 					? snippetMatch[1]
 							.replace(/<[^>]+>/g, '')
@@ -1501,7 +1615,7 @@ async function sepSearch(query) {
 		while ((match = regex.exec(html)) !== null && results.length < 3) {
 			try {
 				const rawUrl = match[1];
-				// *** CORRECTION: Use proper entity names ***
+				// ***Use proper entity names ***
 				const title = match[2]
 					.replace(/<[^>]+>/g, '')
 					.replace(/&/g, '&')
@@ -1519,7 +1633,7 @@ async function sepSearch(query) {
 						'gs'
 					); // Escape quotes
 					const snippetMatch = snippetRegex.exec(html);
-					// *** CORRECTION: Use proper entity names ***
+					// ***Use proper entity names ***
 					const description = snippetMatch
 						? snippetMatch[1]
 								.replace(/<[^>]+>/g, '')
@@ -1544,13 +1658,13 @@ async function sepSearch(query) {
 // Gemini Chat for Web (Corrected API Key Usage)
 async function queryGeminiChatWeb(text, searchResults, chatHistory, userInfo, env, originalQuery = null) {
 	// Added chatHistory param
-	// --- CORRECTION: Check for the correct Gemini Web API Key ---
+	// ---Check for the correct Gemini Web API Key ---
 	if (!env.GEMINI_API_KEY_WEB) {
-		// --- CORRECTION: Log the correct variable name ---
+		// ---Log the correct variable name ---
 		console.error('Widget Worker: GEMINI_API_KEY_WEB not set!');
 		return { response: 'خطای پیکربندی: کلید API چت وب تنظیم نشده است.', astraResults: [] };
 	}
-	// --- CORRECTION: Assign the correct API Key ---
+	// ---Assign the correct API Key ---
 	const API_KEY = env.GEMINI_API_KEY_WEB;
 	// --- End Corrections ---
 
@@ -1580,7 +1694,7 @@ async function queryGeminiChatWeb(text, searchResults, chatHistory, userInfo, en
 	let astraDocs = 'پایگاه داده جستجو نشد یا نتیجه‌ای نداشت.';
 	let astraResults = [];
 	try {
-		// --- ADD LOGGING & CORRECTION: Use originalQuery for embedding ---
+		// --- ADD LOGGING &Use originalQuery for embedding ---
 		const textToEmbed = originalQuery || text; // Prefer originalQuery if available
 		console.log(`Worker: Attempting to generate embedding for text (type: ${typeof textToEmbed}): "${textToEmbed}"`); // Log type and value
 		const embedding = await generateEmbedding(textToEmbed, env); // Use the verified text string
