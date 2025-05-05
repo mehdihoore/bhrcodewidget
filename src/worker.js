@@ -96,6 +96,94 @@ async function saveChatMessage(db, sessionId, role, content) {
 		return false;
 	}
 }
+const GEMINI_CHAT_KEY_ORDER = ['GEMINI_API_KEY_FREE', 'GEMINI_API_KEY_PAID1', 'GEMINI_API_KEY_128K', 'GEMINI_API_KEY_PAID2'];
+const GEMINI_EMBEDDING_KEY_VAR = 'GEMINI_API_KEY_EMBEDDING'; // Separate key for embedding
+const MAX_TOTAL_ATTEMPTS = 5; // Max tries across *all* keys for a single request
+const RETRY_DELAY_MS = 300; // Small delay before retrying with next key
+
+// --- NEW: Centralized Gemini Fetch Function with Retry/Fallback ---
+async function fetchGeminiWithRetry(endpointUrl, requestBody, keyEnvVarNames, isEmbeddingCall, env) {
+	let currentKeyIndex = 0;
+	let attempts = 0;
+	const keysToTry = isEmbeddingCall ? [GEMINI_EMBEDDING_KEY_VAR] : keyEnvVarNames;
+
+	console.log(`Worker: Starting Gemini call. Embedding: ${!!isEmbeddingCall}. Keys to try: ${keysToTry.join(', ')}`);
+
+	while (attempts < MAX_TOTAL_ATTEMPTS && currentKeyIndex < keysToTry.length) {
+		attempts++;
+		const currentKeyVarName = keysToTry[currentKeyIndex];
+		const apiKey = env[currentKeyVarName];
+
+		if (!apiKey) {
+			console.warn(`Worker: API Key variable '${currentKeyVarName}' not found in environment. Skipping.`);
+			currentKeyIndex++; // Move to the next key
+			continue; // Try next key
+		}
+
+		const apiUrlWithKey = `${endpointUrl}?key=${apiKey}`;
+		console.log(`Worker: Attempt #${attempts} using key var '${currentKeyVarName}'. URL: ${endpointUrl}`); // Don't log full URL with key
+
+		try {
+			const response = await fetch(apiUrlWithKey, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(requestBody),
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				console.log(`Worker: Gemini call successful with key var '${currentKeyVarName}' (Attempt #${attempts}).`);
+				return { success: true, data: data }; // Successful response
+			}
+
+			// --- Handle Errors ---
+			const status = response.status;
+			let errorText = await response.text();
+			let errorJson = {};
+			let errorMessage = `HTTP ${status}: ${errorText}`;
+			try {
+				errorJson = JSON.parse(errorText);
+				errorMessage = errorJson.error?.message || errorMessage;
+			} catch {}
+
+			console.warn(
+				`Worker: Gemini call failed with key var '${currentKeyVarName}' (Attempt #${attempts}). Status: ${status}, Message: ${errorMessage}`
+			);
+
+			// Check for Quota Error (429 or specific messages)
+			const isQuotaError = status === 429 || /quota|rate limit|resource exhausted/i.test(errorMessage);
+
+			if (isQuotaError) {
+				console.warn(`Worker: Quota/Rate limit hit for key var '${currentKeyVarName}'. Trying next key.`);
+				currentKeyIndex++; // Move to the next key
+				if (currentKeyIndex < keysToTry.length) {
+					await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS)); // Wait briefly before next try
+				}
+				continue; // Go to the next iteration of the while loop
+			} else {
+				// For other errors (400, 500, etc.), fail immediately for this request
+				console.error(`Worker: Unrecoverable Gemini error with key var '${currentKeyVarName}'. Failing request.`);
+				return { success: false, error: { status: status, message: errorMessage } };
+			}
+		} catch (fetchError) {
+			console.error(
+				`Worker: Network/Fetch error during Gemini call with key var '${currentKeyVarName}' (Attempt #${attempts}):`,
+				fetchError
+			);
+			// Treat network errors like unrecoverable errors for this attempt, but maybe retry next key?
+			// For simplicity now, we'll fail the request on fetch errors. Could increment key index here too.
+			return { success: false, error: { status: 500, message: `Network error during API call: ${fetchError.message}` } };
+		}
+	} // End while loop
+
+	// If loop finishes without success
+	console.error(`Worker: Gemini call failed after ${attempts} attempts and trying ${currentKeyIndex} keys.`);
+	if (currentKeyIndex >= keysToTry.length) {
+		return { success: false, error: { status: 429, message: 'All API keys hit quota limits or were invalid.' } };
+	} else {
+		return { success: false, error: { status: 500, message: `Failed after ${MAX_TOTAL_ATTEMPTS} total attempts.` } };
+	}
+}
 // --- Widget HTML/CSS/JS ---
 const renderWidget = () => {
 	// Add base URL dynamically for constructing share links later
@@ -1408,29 +1496,25 @@ app.post('/api/webchat', async (c) => {
 	}
 
 	try {
-		// 1. Fetch Chat History
 		const history = await getChatHistory(db, sessionId, CHAT_HISTORY_LIMIT);
+		const searchResults = { ddg: await ddgSearch(text), ccav: await codecave(text) }; /* ... google fallback ... */
 
-		// 2. Perform Web Searches (as before)
-		console.log('Worker: Performing web searches for chat...');
-		const searchResults = { ddg: await ddgSearch(text), sep: await codecave(text) };
+		// Call Gemini via the new helper function
+		const geminiResult = await queryGeminiChatWeb(text, searchResults, history, userInfo, c.env, text);
 
-		console.log('Worker: Web searches for chat complete.');
+		// Check if the Gemini call itself failed unrecoverably
+		if (!geminiResult.success) {
+			// Use the error status/message from the helper function if available
+			const status = geminiResult.error?.status || 500;
+			const message = geminiResult.error?.message || 'خطا در ارتباط با سرویس هوش مصنوعی.';
+			console.error(`Worker: Failing webchat request due to Gemini error. Status: ${status}, Message: ${message}`);
+			return c.json({ error: message }, status);
+		}
 
-		// 3. Perform RAG Query (passing history)
-		console.log('Worker: Performing RAG query for chat (with history)...');
-		const { response: botResponseText, astraResults } = await queryGeminiChatWeb(
-			// Renamed to botResponseText for clarity
-			text, // Pass the user text string
-			searchResults,
-			history,
-			userInfo,
-			c.env,
-			text // Pass original text again for originalQuery param
-		);
-		console.log(`Worker: RAG query complete. Found ${astraResults?.length ?? 0} Astra results.`);
+		// Success - extract results
+		const { response: botResponseText, astraResults } = geminiResult.data;
 
-		// 4. Save messages
+		// Save messages (ensure botResponseText is string)
 		await saveChatMessage(db, sessionId, 'user', text);
 		if (typeof botResponseText === 'string') {
 			await saveChatMessage(db, sessionId, 'bot', botResponseText);
@@ -1459,21 +1543,34 @@ app.post('/api/widget-search', async (c) => {
 		console.log(`Widget Worker: /api/widget-search request: "${text}"`);
 		if (!text) return c.json({ error: 'لطفا عبارتی برای جستجو وارد کنید' }, 400);
 
-		console.log('Widget Worker: Generating embedding for vector search...');
+		console.log(`Widget Worker: /api/widget-search request: "${text}"`);
 		// ---Pass ONLY the text string ---
-		const embedding = await generateEmbedding(text, c.env);
+		const embeddingResult = await generateEmbedding(text, c.env);
 		// --- End Correction ---
 
-		if (!embedding) return c.json({ error: 'خطا در تولید بردار جستجو.' }, 500);
+		// Check if embedding call failed
+		if (!embeddingResult.success) {
+			const status = embeddingResult.error?.status || 500;
+			const message = embeddingResult.error?.message || 'خطا در تولید بردار جستجو.';
+			console.error(`Worker: Failing search request due to embedding error. Status: ${status}, Message: ${message}`);
+			return c.json({ error: message }, status);
+		}
+
+		const embedding = embeddingResult.data; // Extract the embedding vector
+		if (!embedding) {
+			// Should not happen if success is true, but double-check
+			console.error('Worker: Embedding generation succeeded but returned no vector.');
+			return c.json({ error: 'Embedding vector generation failed unexpectedly.' }, 500);
+		}
 		console.log(`Widget Worker: Embedding generated (dimension: ${embedding.length})`);
 
-		console.log('Widget Worker: Searching AstraDB with vector...');
+		// Search AstraDB (this part remains the same)
 		const results = await searchAstraDB(embedding, c.env);
 		console.log(`Widget Worker: AstraDB vector search found ${results.length} results.`);
 		return c.json(results);
 	} catch (error) {
-		console.error('Widget Worker: /api/widget-search Error:', error, error.stack);
-		return c.json({ error: `جستجوی برداری با خطا مواجه شد: ${error.message || 'Unknown error'}` }, 500);
+		console.error('Widget Worker: UNEXPECTED /api/widget-search Error:', error, error.stack);
+		return c.json({ error: `جستجوی برداری با خطای غیرمنتظره مواجه شد.` }, 500);
 	}
 });
 
@@ -1503,22 +1600,27 @@ app.get('/api/get-history/:sessionId', async (c) => {
 
 // Generate Embedding Function
 async function generateEmbedding(text, env) {
-	if (!env.GEMINI_API_KEY_WEB) {
-		console.error('Widget Worker: GEMINI_API_KEY_WEB for embedding not set!');
-		return null;
+	if (!env[GEMINI_EMBEDDING_KEY_VAR]) {
+		console.error(`Worker: Embedding key var '${GEMINI_EMBEDDING_KEY_VAR}' not set!`);
+		return { success: false, error: { status: 500, message: 'Embedding key not configured.' } };
 	}
 	if (typeof text !== 'string' || !text) {
-		console.error('Widget Worker: Cannot generate embedding for non-string or empty text. Received:', text);
-		return null; // Return null explicitly
+		console.error('Widget Worker: Cannot embed non-string:', text);
+		return { success: false, error: { status: 400, message: 'Invalid text for embedding.' } };
 	}
-	try {
-		const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY_WEB);
-		const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-		const result = await embeddingModel.embedContent(text); // This expects ONLY the text string
-		return result.embedding.values;
-	} catch (embedError) {
-		console.error('Widget Worker: Error generating embedding for text:', text, embedError); // Log the text that failed
-		return null;
+	const MODEL_NAME = 'text-embedding-004'; // Specific model for embedding
+	const endpointUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:embedContent`;
+	const requestBody = { content: { parts: [{ text: text }] } }; // Correct structure for embedContent
+
+	console.log('Worker: Calling fetchGeminiWithRetry for embedding...');
+	const result = await fetchGeminiWithRetry(endpointUrl, requestBody, null, true, env); // Pass embedding flag = true
+
+	if (result.success && result.data?.embedding?.values) {
+		return { success: true, data: result.data.embedding.values }; // Return the vector
+	} else {
+		console.error('Worker: fetchGeminiWithRetry failed for embedding.', result.error);
+		// Return the failure object from the helper
+		return result; // Propagate the error details
 	}
 }
 // Search AstraDB Function
@@ -1654,7 +1756,7 @@ async function ddgSearch(query) {
 // 	}
 // }
 
-// SEP Search (with corrected entity decoding)
+// CCAV Search (with corrected entity decoding)
 async function codecave(query) {
 	const encodedQuery = encodeURIComponent(`site:codekav.ir ${query}`);
 	const url = `https://html.duckduckgo.com/html/?q=${encodedQuery}`;
@@ -1675,7 +1777,7 @@ async function codecave(query) {
 			redirect: 'follow',
 		});
 		if (!response.ok) {
-			console.error(`Widget Worker: SEP Search failed status: ${response.status}`);
+			console.error(`Widget Worker: codecav failed status: ${response.status}`);
 			return [];
 		}
 		const html = await response.text();
@@ -1697,7 +1799,7 @@ async function codecave(query) {
 					actualUrl = urlParams.get('uddg') || rawUrl;
 				}
 				actualUrl = actualUrl.replace(/&/g, '&'); // Also decode in URL
-				if (actualUrl && title && actualUrl.includes('plato.stanford.edu')) {
+				if (actualUrl && title && actualUrl.includes('codekav.ir')) {
 					const snippetRegex = new RegExp(
 						`<a class="result__a".*?href="${match[1].replace(/\"/g, '"')}">.*?</a>.*?<a class="result__snippet".*?>(.*?)</a>`,
 						'gs'
@@ -1714,12 +1816,12 @@ async function codecave(query) {
 					results.push({ title: title, link: decodeURIComponent(actualUrl), description: description });
 				}
 			} catch (urlError) {
-				console.warn('Widget Worker: SEP parsing issue:', urlError);
+				console.warn('Widget Worker: codecav parsing issue:', urlError);
 			}
 		}
 		return results;
 	} catch (error) {
-		console.error('Widget Worker: SEP Search Error:', error);
+		console.error('Widget Worker: codecav Search Error:', error);
 		return [];
 	}
 }
@@ -1728,27 +1830,13 @@ async function codecave(query) {
 // Gemini Chat for Web (Corrected API Key Usage)
 async function queryGeminiChatWeb(text, searchResults, chatHistory, userInfo, env, originalQuery = null) {
 	// Added chatHistory param
-	// ---Check for the correct Gemini Web API Key ---
-	if (!env.GEMINI_API_KEY_WEB) {
-		// ---Log the correct variable name ---
-		console.error('Widget Worker: GEMINI_API_KEY_WEB not set!');
-		return { response: 'خطای پیکربندی: کلید API چت وب تنظیم نشده است.', astraResults: [] };
-	}
-	// ---Assign the correct API Key ---
-	const API_KEY = env.GEMINI_API_KEY_WEB;
-	// --- End Corrections ---
-
-	const MODEL_NAME = 'gemini-2.5-pro-exp-03-25'; // Use Flash for potentially faster widget response
-	const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
-	const MAX_RETRIES = 2;
-	const RETRY_DELAY = 800;
 
 	// Format Web Search Results (as before)
 	const formattedSearchResults =
 		Object.entries(searchResults)
 			.filter(([_, results]) => results.length > 0)
 			.map(([source, results]) => {
-				const sourceName = source === 'ddg' ? 'DDG' : source === 'google' ? 'Google' : source === 'sep' ? 'SEP' : 'Web';
+				const sourceName = source === 'ddg' ? 'DDG' : source === 'google' ? 'Google' : source === 'ccav' ? 'CCAV' : 'Web';
 				const resultLines = results.map((r, i) => `${i + 1}. **${r.title}**: ${r.description || '_'} [لینک](${r.link})`).join('\n');
 				return `*نتایج ${sourceName}:*\n${resultLines}`;
 			})
@@ -1767,11 +1855,11 @@ async function queryGeminiChatWeb(text, searchResults, chatHistory, userInfo, en
 		// --- ADD LOGGING &Use originalQuery for embedding ---
 		const textToEmbed = originalQuery || text; // Prefer originalQuery if available
 		console.log(`Worker: Attempting to generate embedding for text (type: ${typeof textToEmbed}): "${textToEmbed}"`); // Log type and value
-		const embedding = await generateEmbedding(textToEmbed, env); // Use the verified text string
+		const embeddingResult = await generateEmbedding(textToEmbed, env); // Use the verified text string
 		// --- End Logging & Correction ---
 
-		if (embedding) {
-			astraResults = await searchAstraDB(embedding, env); // Use the helper function
+		if (embeddingResult.success) {
+			astraResults = await searchAstraDB(embeddingResult.data, env); // Use the helper function
 			if (astraResults.length > 0) {
 				astraDocs =
 					'نتایج پایگاه داده:\n' +
@@ -1786,12 +1874,14 @@ async function queryGeminiChatWeb(text, searchResults, chatHistory, userInfo, en
 				astraDocs = 'سند مرتبطی در پایگاه داده یافت نشد.';
 			}
 		} else {
-			astraDocs = 'خطا در پردازش جستجوی پایگاه داده.';
+			astraDocs = `خطا در پردازش جستجوی پایگاه داده (${embeddingResult.error?.message || 'embedding failed'}).`;
+			console.log('Worker: Skipping AstraDB search due to embedding failure.');
 		}
 	} catch (astraError) {
 		console.error('Worker: Chat AstraDB Error:', astraError);
 		astraDocs = 'خطا در جستجوی پایگاه داده.';
 	}
+
 	let userInfoForPrompt = 'کاربر گرامی'; // Default
 	if (userInfo && (userInfo.firstName || userInfo.lastName)) {
 		userInfoForPrompt = `${userInfo.firstName || ''} ${userInfo.lastName || ''}`.trim();
@@ -1846,67 +1936,56 @@ You are AlumGlass, a highly specialized AI assistant providing expert guidance o
 Generate **ONLY** the comprehensive, well-cited, Persian response for the user, following all directives above. Do NOT output your internal thought process, self-review checklist, or comments about the search process for Knowledge Base Documents.
 `;
 	// --- End Prompt Update ---
+	// ---Check for the correct Gemini Web API Key ---
 
+	if (!env.GEMINI_API_KEY_FREE) {
+		// ---Log the correct variable name ---
+		console.error('Widget Worker: GEMINI_API_KEY_FREE not set!');
+		return { response: 'خطای پیکربندی: کلید API چت وب تنظیم نشده است.'};
+	} else if (!env.GEMINI_API_KEY_PAID1) {
+		// ---Log the correct variable name ---
+		console.error('Widget Worker: GEMINI_API_KEY_PAID1 not set!');
+		return { response: 'خطای پیکربندی: کلید API چت وب تنظیم نشده است.' };
+	} else if (!env.GEMINI_API_KEY_PAID2) {
+		// ---Log the correct variable name ---
+		console.error('Widget Worker: GEMINI_API_KEY_PAID2 not set!');
+		return { response: 'خطای پیکربندی: کلید API چت وب تنظیم نشده است.' };
+	} else if (!env.GEMINI_API_KEY_128K) {
+		// ---Log the correct variable name ---
+		console.error('Widget Worker: GEMINI_API_KEY_128K not set!');
+		return { response: 'خطای پیکربندی: کلید API چت وب تنظیم نشده است.' };
+	}
+
+
+
+	// --- End Corrections ---
+
+	const MODEL_NAME = 'gemini-2.5-pro-exp-03-25'; // Use Flash for potentially faster widget response
+	const endpointUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent`;
+	
 	const requestBody = { contents: [{ parts: [{ text: prompt }] }], generationConfig: {} };
 
-	// Make the Gemini API Call (keep retry logic as before)
-	for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-		try {
-			const response = await fetch(url, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(requestBody),
-			});
-			if (!response.ok) {
-				/* Error handling as before */
-				const errorText = await response.text();
-				let errorJson = {};
-				try {
-					errorJson = JSON.parse(errorText);
-				} catch {}
-				const errorMessage = `Gemini API Error: Status ${response.status}, Msg: ${errorJson.error?.message || errorText}`;
-				console.error(`Worker: ${errorMessage} (Attempt ${attempt})`);
-				if ((response.status === 429 || response.status === 503) && attempt < MAX_RETRIES) {
-					console.log(`Retrying Gemini...`);
-					await new Promise((r) => setTimeout(r, RETRY_DELAY * attempt));
-					continue;
-				}
-				if (response.status === 400) {
-					return { response: `خطای درخواست: ${errorJson.error?.message || 'سوال نامعتبر'}`, astraResults: [] };
-				}
-				if (attempt === MAX_RETRIES) {
-					return { response: `خطا در ارتباط با سرویس (${response.status})`, astraResults: [] };
-				}
-				await new Promise((r) => setTimeout(r, RETRY_DELAY));
-				continue;
-			}
-			const data = await response.json();
-			const candidate = data.candidates?.[0];
-			let responseText = candidate?.content?.parts?.[0]?.text;
-			const finishReason = candidate?.finishReason;
-			if (!responseText) {
-				/* Finish reason handling as before */
-				if (finishReason === 'SAFETY') responseText = 'پاسخ به دلیل محدودیت ایمنی مسدود شد.';
-				else if (finishReason === 'RECITATION') responseText = 'پاسخ به دلیل تکرار محتوای محافظت شده مسدود شد.';
-				else if (finishReason === 'MAX_TOKENS')
-					responseText = (candidate?.content?.parts?.[0]?.text || 'پاسخ کامل نشد.') + '\n\n[محدودیت طول]';
-				else {
-					console.error('Worker: No text in Gemini response. Finish:', finishReason);
-					responseText = 'پاسخ خالی دریافت شد.';
-				}
-			}
-			return { response: responseText, astraResults: astraResults };
-		} catch (error) {
-			/* ... retry/error handling ... */
-			console.error(`Worker: Gemini Chat Error (Attempt ${attempt}):`, error);
-			if (attempt < MAX_RETRIES) {
-				await new Promise((r) => setTimeout(r, RETRY_DELAY));
-			} else {
-				return { response: 'خطا در پردازش درخواست چت.', astraResults: [] };
-			}
-		}
+	console.log('Worker: Calling fetchGeminiWithRetry for chat response...');
+	const result = await fetchGeminiWithRetry(endpointUrl, requestBody, GEMINI_CHAT_KEY_ORDER, false, env); // Pass chat key order
+
+	if (result.success && result.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+		const responseText = result.data.candidates[0].content.parts[0].text;
+		// Return success along with the data needed by the API handler
+		return { success: true, data: { response: responseText, astraResults: astraResults } };
+	} else if (result.success) {
+		// Success but unexpected response structure
+		console.error('Worker: Gemini chat call succeeded but response format unexpected:', result.data);
+		const finishReason = result.data?.candidates?.[0]?.finishReason;
+		let errMsg = 'پاسخ نامعتبر از سرویس هوش مصنوعی دریافت شد.';
+		if (finishReason === 'SAFETY') errMsg = 'پاسخ به دلیل محدودیت ایمنی مسدود شد.';
+		else if (finishReason === 'RECITATION') errMsg = 'پاسخ به دلیل تکرار محتوای محافظت شده مسدود شد.';
+		else if (finishReason === 'MAX_TOKENS') errMsg = 'پاسخ کامل نشد (محدودیت طول).';
+		return { success: false, error: { status: 500, message: errMsg } };
+	} else {
+		// Fetch helper already failed, propagate the error
+		console.error('Worker: fetchGeminiWithRetry failed for chat.', result.error);
+		return result; // Contains { success: false, error: {...} }
 	}
-	return { response: 'متاسفانه پس از چندین تلاش، پاسخی دریافت نشد.', astraResults: [] }; // Fallback
 }
 
 // --- Export the Hono app ---
