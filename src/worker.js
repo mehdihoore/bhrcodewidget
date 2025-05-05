@@ -970,7 +970,7 @@ const renderWidget = () => {
 								buttonElement.disabled = false;
 							}, 2000);
 						} catch (err) {
-							console.error('Widget: Failed to copy text:', err);
+							//console.error('Widget: Failed to copy text:', err);
 							showError('chat', 'خطا در کپی متن.');
 							buttonElement.innerHTML = '<i class="fas fa-times"></i> خطا';
 							setTimeout(() => {
@@ -1004,10 +1004,10 @@ const renderWidget = () => {
 
 						try {
 							await navigator.share(shareData);
-							console.log('Widget: Conversation link shared successfully');
+							//console.log('Widget: Conversation link shared successfully');
 						} catch (err) {
 							if (err.name !== 'AbortError') {
-								console.error('Widget: Error sharing content:', err);
+								//console.error('Widget: Error sharing content:', err);
 								showError('chat', 'خطا در اشتراک‌گذاری گفتگو.');
 							}
 						}
@@ -1101,11 +1101,11 @@ const renderWidget = () => {
 					function sendMessageToParent(messageType, text) {
 						try {
 							const targetOrigin = window.location.ancestorOrigins[0] || '*';
-							console.log(\`Widget: Sending \${messageType} message to parent (\${targetOrigin}):\`, text);
+							//console.log(\`Widget: Sending \${messageType} message to parent (\${targetOrigin}):\`, text);
 							// Use messageType in the object sent
 							window.parent.postMessage({ type: messageType, text: text }, targetOrigin);
 						} catch (err) {
-							console.error('Widget: Error sending message to parent:', err);
+							//console.error('Widget: Error sending message to parent:', err);
 							// Determine error context based on messageType
 							const errorContext = messageType === 'chatMessage' ? 'chat' : 'search';
 							showError(errorContext, 'خطا در ارسال پیام به صفحه اصلی.');
@@ -1117,7 +1117,7 @@ const renderWidget = () => {
 					}
 					// --- Tab Switching Logic ---
 					function switchToTab(tabName) {
-						console.log('Widget: Switching to tab:', tabName);
+						//console.log('Widget: Switching to tab:', tabName);
 						// Update button active states
 						chatTabButton.classList.toggle('active', tabName === 'chat');
 						searchTabButton.classList.toggle('active', tabName === 'search');
@@ -1141,7 +1141,7 @@ const renderWidget = () => {
 						if (shouldRemember) {
 							const name = localStorage.getItem(LS_USER_NAME) || '';
 							const contact = localStorage.getItem(LS_USER_CONTACT) || '';
-							console.log("Widget: Found 'Remember Me' flag. Name:", name, 'Contact:', contact);
+							//console.log("Widget: Found 'Remember Me' flag. Name:", name, 'Contact:', contact);
 
 							rememberedUserInfo = {
 								// Populate global var
@@ -1163,7 +1163,7 @@ const renderWidget = () => {
 							addInitialBotMessage('چگونه می‌توانم به شما کمک کنم؟'); // Add a follow-up greeting
 							chatInput.focus();
 						} else {
-							console.log("Widget: No 'Remember Me' flag found. Showing info form.");
+							//console.log("Widget: No 'Remember Me' flag found. Showing info form.");
 							// Ensure form is visible and chat is hidden
 							userInfoForm.classList.remove('hidden');
 							chatInputArea.classList.add('hidden');
@@ -1204,21 +1204,21 @@ const renderWidget = () => {
 							name: name || null,
 							contact: contact || null,
 						};
-						console.log('Widget: User info submitted:', userInfoToSend, 'Remember:', remember);
+						//console.log('Widget: User info submitted:', userInfoToSend, 'Remember:', remember);
 
 						if (remember) {
 							localStorage.setItem(LS_REMEMBER_FLAG, 'true');
 							localStorage.setItem(LS_USER_NAME, name);
 							localStorage.setItem(LS_USER_CONTACT, contact);
 							rememberedUserInfo = userInfoToSend; // Also set global var for immediate use
-							console.log('Widget: Saved info to localStorage.');
+							//console.log('Widget: Saved info to localStorage.');
 						} else {
 							// Clear localStorage if user unchecks 'Remember Me' later (or on submit)
 							localStorage.removeItem(LS_REMEMBER_FLAG);
 							localStorage.removeItem(LS_USER_NAME);
 							localStorage.removeItem(LS_USER_CONTACT);
 							rememberedUserInfo = null; // Clear global var if not remembering
-							console.log('Widget: Cleared info from localStorage.');
+							//console.log('Widget: Cleared info from localStorage.');
 						}
 
 						// Hide form, show chat
@@ -1299,7 +1299,7 @@ const renderWidget = () => {
 
 					// --- Listen for messages FROM Parent ---
 					window.addEventListener('message', (event) => {
-						console.log('Parent Listener: Message EVENT received! Origin:', event.origin, 'Data:', event.data);
+						//console.log('Parent Listener: Message EVENT received! Origin:', event.origin, 'Data:', event.data);
 						// SECURITY: Origin check
 						const allowedOrigins = [
 							'https://alumglass.com',
@@ -1313,17 +1313,17 @@ const renderWidget = () => {
 						const loopbackRegex = new RegExp('^http:\\/\\/127\\.0\\.0\\.1:\\d+$');
 						const isAllowedOrigin =
 							allowedOrigins.includes(event.origin) || localhostRegex.test(event.origin) || loopbackRegex.test(event.origin);
-						console.log('Parent: Processing valid message from widget:', event.data);
+						//console.log('Parent: Processing valid message from widget:', event.data);
 
 						// ***Add safety check for event.data and event.data.type ***
 						if (typeof event.data !== 'object' || event.data === null || !event.data.hasOwnProperty('type')) {
-							console.warn('Widget: Received malformed/typeless message data from parent:', event.data);
+							//console.warn('Widget: Received malformed/typeless message data from parent:', event.data);
 							return; // Ignore message without a 'type'
 						}
 						// *** End Correction ***
 						if (!isAllowedOrigin) return;
 						if (typeof event.data !== 'object' || event.data === null || !event.data.hasOwnProperty('type')) return;
-						console.log('Widget: Message received from parent:', event.data);
+						//console.log('Widget: Message received from parent:', event.data);
 						// Now it's safe to destructure
 						const { type, response, astraResults, results, message, sessionId } = event.data;
 
@@ -1413,7 +1413,7 @@ app.post('/api/webchat', async (c) => {
 
 		// 2. Perform Web Searches (as before)
 		console.log('Worker: Performing web searches for chat...');
-		const searchResults = { ddg: await ddgSearch(text), sep: await sepSearch(text) };
+		const searchResults = { ddg: await ddgSearch(text), sep: await codecave(text) };
 
 		console.log('Worker: Web searches for chat complete.');
 
@@ -1655,8 +1655,8 @@ async function ddgSearch(query) {
 // }
 
 // SEP Search (with corrected entity decoding)
-async function sepSearch(query) {
-	const encodedQuery = encodeURIComponent(`site:plato.stanford.edu ${query}`);
+async function codecave(query) {
+	const encodedQuery = encodeURIComponent(`site:codekav.ir ${query}`);
 	const url = `https://html.duckduckgo.com/html/?q=${encodedQuery}`;
 	try {
 		const response = await fetch(url, {
