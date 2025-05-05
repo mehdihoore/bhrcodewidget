@@ -124,9 +124,11 @@ const renderWidget = () => {
 					crossorigin="anonymous"
 					referrerpolicy="no-referrer"
 				/>
+				<!-- فونت‌های فارسی بهتر -->
+				<link href="https://cdnjs.cloudflare.com/ajax/libs/vazirmatn/33.0.3/Vazirmatn-font-face.min.css" rel="stylesheet" />
+				<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
 
 				<style>
-					/* Base styles */
 					html,
 					body {
 						margin: 0;
@@ -135,6 +137,7 @@ const renderWidget = () => {
 						overflow: hidden;
 						background-color: #121212;
 					}
+
 					.alumglass-widget {
 						font-family: 'Vazirmatn', sans-serif;
 						font-weight: 400;
@@ -146,199 +149,173 @@ const renderWidget = () => {
 						display: flex;
 						flex-direction: column;
 						background-color: #121212;
-						/* No padding here, apply to inner containers */
+						padding: 0.5rem;
+						gap: 0.5rem;
 					}
-					.alumglass-widget {
-						font-family: 'Vazirmatn', sans-serif;
-						font-weight: 400;
-						color: #e0e0e0;
-						width: 100%;
-						height: 100%;
-						box-sizing: border-box;
-						overflow: hidden;
-						display: flex;
-						flex-direction: column;
-						background-color: #121212;
-						padding: 0.75rem;
-						gap: 0.75rem;
-					}
+
+					/* Improved Tab Buttons */
 					#tab-buttons {
 						display: flex;
 						background-color: #1e1e1e;
-						border-bottom: 1px solid #333;
-						flex-shrink: 0; /* Prevent shrinking */
+						border-radius: 8px;
+						overflow: hidden;
+						max-width: 500px;
+						margin: 0 auto;
+						box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+						flex-shrink: 0;
 					}
+
 					.tab-button {
-						flex-grow: 1; /* Equal width */
-						padding: 10px 15px;
+						flex-grow: 1;
+						padding: 0.6rem 1rem;
 						cursor: pointer;
 						background-color: #1e1e1e;
 						border: none;
 						color: #aaa;
-						font-size: 1rem;
+						font-size: 0.9rem;
 						font-family: 'Vazirmatn', sans-serif;
-						border-left: 1px solid #333;
-						transition: background-color 0.2s, color 0.2s;
+						transition: all 0.3s ease;
 					}
-					.tab-button:last-child {
-						border-left: none;
-					}
+
 					.tab-button:hover {
 						background-color: #2a2a2a;
-						color: #ccc;
+						color: #fff;
 					}
-					.tab-button.active {
-						background-color: #2d2d2d;
-						color: #e0e0e0;
-						font-weight: 600;
-						border-bottom: 2px solid #3b82f6;
-					}
-					/* --- End Tab Button Styles --- */
 
-					/* --- ADDED: Tab Content Area --- */
-					#tab-content {
-						flex-grow: 1; /* Takes remaining vertical space */
-						overflow: hidden; /* Prevent overflow from container */
-						position: relative; /* For positioning elements inside */
+					.tab-button.active {
+						background-color: #3b82f6;
+						color: #ffffff;
+						font-weight: 600;
 					}
+
+					/* Tab Content Area */
+					#tab-content {
+						flex-grow: 1;
+						overflow: hidden;
+						position: relative;
+						border-radius: 8px;
+						background-color: #1a1a1a;
+						box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+					}
+
 					.tab-pane {
 						width: 100%;
 						height: 100%;
 						box-sizing: border-box;
-						padding: 0.75rem; /* Padding inside the pane */
+						padding: 0.75rem;
 						display: flex;
 						flex-direction: column;
-						overflow: hidden; /* Prevents inner content from overflowing the pane itself */
+						overflow: hidden;
 					}
+
 					.tab-pane:not(.active) {
 						display: none;
-					} /* Hide inactive panes */
-					/* --- End Tab Content Area --- */
+					}
 
 					/* Section Styles */
 					.tab-pane h2 {
-						/* Style headings within panes */
-						font-size: 1.1rem;
+						font-size: 1rem;
 						font-weight: 600;
-						margin-bottom: 0.75rem;
-						padding-bottom: 0.5rem;
+						margin-bottom: 0.5rem;
+						padding-bottom: 0.3rem;
 						border-bottom: 1px solid #333;
-						color: #e0e0e0;
+						color: #3b82f6;
 						text-align: right;
-						flex-shrink: 0; /* Prevent shrinking */
+						flex-shrink: 0;
 					}
-					/* Chat Styles (mostly within #chat-tab-content) */
+
+					/* Chat Styles */
 					#chat-messages {
-						/* Let messages div grow and scroll */
 						font-family: 'Lateef', serif;
 						flex-grow: 1;
 						overflow-y: auto;
-						margin-bottom: 0.75rem; /* Space before input */
-						padding: 0 0.5rem; /* Padding L/R */
+						margin-bottom: 0.75rem;
+						padding: 0 0.5rem;
 						scrollbar-width: thin;
 						scrollbar-color: #444 #1e1e1e;
+						border-radius: 6px;
+						background-color: #1d1d1d;
 					}
+
 					#chat-messages::-webkit-scrollbar {
-						width: 8px;
+						width: 5px;
 					}
+
 					#chat-messages::-webkit-scrollbar-track {
 						background: #1e1e1e;
+						border-radius: 4px;
 					}
+
 					#chat-messages::-webkit-scrollbar-thumb {
 						background-color: #444;
 						border-radius: 4px;
 					}
-					.message-base {
-						padding: 0.6rem 1rem;
-						border-radius: 0.5rem;
-						margin-bottom: 0.75rem;
-						max-width: 85%;
-						word-wrap: break-word;
-						font-size: 1.2em;
-						line-height: 1.7;
-					}
-					/* Chat Styles */
-					.chat-section {
-						flex-grow: 1;
-						min-height: 150px;
-					}
-					.chat-messages {
-						font-family: 'Lateef', serif;
-						flex-grow: 1;
-						overflow-y: auto;
-						margin-bottom: 0.75rem;
-						padding-right: 0.5rem;
-						scrollbar-width: thin;
-						scrollbar-color: #444 #1e1e1e;
-					}
-					.chat-messages::-webkit-scrollbar {
-						width: 8px;
-					}
-					.chat-messages::-webkit-scrollbar-track {
-						background: #1e1e1e;
-						border-radius: 4px;
-					}
-					.chat-messages::-webkit-scrollbar-thumb {
-						background-color: #444;
-						border-radius: 4px;
-						border: 2px solid #1e1e1e;
-					}
 
 					.message-base {
-						padding: 0.6rem 1rem;
-						border-radius: 0.5rem;
+						padding: 0.6rem 0.8rem;
+						border-radius: 0.8rem;
 						margin-bottom: 0.75rem;
-						max-width: 85%;
+						max-width: 80%;
 						word-wrap: break-word;
-						/* --- MODIFICATION: Increased font size and line height for chat --- */
-						font-size: 1.2em; /* Increased size (adjust as needed) */
-						line-height: 1.7; /* Adjusted line height */
-						/* --- End Modification --- */
+						font-size: 1.1em;
+						line-height: 1.6;
+						box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 					}
+
 					.user-message {
 						margin-left: auto;
 						text-align: right;
 						background-color: #2d4263;
 						color: #ffffff;
+						border-bottom-right-radius: 0.3rem;
 					}
+
 					.bot-message {
 						margin-right: auto;
 						text-align: right;
-						background-color: #383838;
+						background-color: #2d2d2d;
 						color: #ffffff;
+						border-bottom-left-radius: 0.3rem;
 					}
+
 					.bot-message strong {
 						color: #a5d6ff;
 					}
+
 					.bot-message a {
 						color: #7dd3fc;
 						text-decoration: underline;
 					}
+
 					.bot-message a:hover {
 						color: #a5d6ff;
 					}
+
 					.astra-results-container {
-						margin-top: 1rem;
-						padding-top: 0.75rem;
-						border-top: 1px dashed #555;
-						font-size: 0.9em;
+						margin-top: 0.75rem;
+						padding-top: 0.5rem;
+						border-top: 1px dashed #444;
+						font-size: 0.85em;
 						opacity: 0.9;
 					}
+
 					.astra-results-container strong {
 						color: #facc15;
 					}
+
 					.astra-doc {
 						margin-bottom: 0.5rem;
 					}
+
 					.error-message {
 						text-align: right;
 						background-color: #7f1d1d;
 						color: #fecaca;
 						border: 1px solid #924040;
-						padding: 0.6rem 1rem;
+						padding: 0.5rem 0.75rem;
 						border-radius: 0.5rem;
 						margin-top: 0.5rem;
-						font-size: 0.9em;
+						font-size: 0.85em;
 					}
 
 					/* Input Areas */
@@ -346,37 +323,49 @@ const renderWidget = () => {
 						display: flex;
 						gap: 0.5rem;
 						align-items: center;
-						margin-top: auto; /* Push to bottom */
+						margin-top: auto;
 						flex-shrink: 0;
+						background-color: #1d1d1d;
+						padding: 0.5rem;
+						border-radius: 8px;
+						box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.1);
 					}
+
 					.input-area input[type='text'] {
 						flex-grow: 1;
 						background-color: #2d2d2d;
 						color: #e0e0e0;
 						border: 1px solid #444;
-						padding: 0.6rem 1rem;
+						padding: 0.6rem 0.8rem;
 						border-radius: 0.5rem;
 						font-family: 'Vazirmatn', sans-serif;
+						transition: all 0.2s ease;
 					}
+
 					.input-area input[type='text']:focus {
 						outline: none;
 						border-color: #3b82f6;
-						box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+						box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
 					}
+
 					.input-area button {
 						background-color: #3b82f6;
 						color: white;
-						padding: 0.6rem 1rem;
+						padding: 0.6rem 0.8rem;
 						border: none;
 						border-radius: 0.5rem;
 						cursor: pointer;
-						transition: background-color 0.2s ease;
+						transition: all 0.2s ease;
 						font-family: 'Vazirmatn', sans-serif;
 						flex-shrink: 0;
+						font-weight: 500;
 					}
+
 					.input-area button:hover:not(:disabled) {
 						background-color: #2563eb;
+						transform: translateY(-1px);
 					}
+
 					.input-area button:disabled {
 						background-color: #555;
 						cursor: not-allowed;
@@ -387,41 +376,55 @@ const renderWidget = () => {
 					.search-section {
 						flex-shrink: 0;
 					}
+
 					#results {
-						/* Let results div grow and scroll */
 						flex-grow: 1;
 						overflow-y: auto;
 						margin-top: 0.75rem;
 						scrollbar-width: thin;
 						scrollbar-color: #444 #1e1e1e;
 						padding: 0 0.5rem;
+						border-radius: 6px;
+						background-color: #1d1d1d;
 					}
+
 					#results::-webkit-scrollbar {
-						width: 8px;
+						width: 5px;
 					}
+
 					#results::-webkit-scrollbar-track {
 						background: #1e1e1e;
 					}
+
 					#results::-webkit-scrollbar-thumb {
 						background-color: #444;
 						border-radius: 4px;
 					}
+
 					.result-card {
-						background-color: #292929;
+						background-color: #242424;
 						color: #e0e0e0;
-						border: 1px solid #444;
+						border: 1px solid #333;
 						padding: 0.75rem;
-						border-radius: 0.375rem;
+						border-radius: 0.5rem;
 						margin-bottom: 0.75rem;
 						font-size: 0.9em;
 						direction: rtl;
+						transition: transform 0.2s ease, box-shadow 0.2s ease;
 					}
+
+					.result-card:hover {
+						transform: translateY(-2px);
+						box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+					}
+
 					.result-card h3 {
 						font-weight: 600;
 						color: #a5d6ff;
 						margin-bottom: 0.25rem;
 						text-align: right;
 					}
+
 					.result-card p {
 						margin-bottom: 0.25rem;
 						text-align: right;
@@ -433,6 +436,7 @@ const renderWidget = () => {
 						text-align: left;
 						direction: ltr;
 					}
+
 					.result-card .metadata-grid {
 						display: grid;
 						grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
@@ -440,10 +444,12 @@ const renderWidget = () => {
 						font-size: 0.85em;
 						margin-top: 0.5rem;
 					}
+
 					.result-card .metadata-grid p {
 						margin-bottom: 0;
 						text-align: right;
 					}
+
 					.result-card .metadata-grid strong {
 						color: #ccc;
 					}
@@ -456,9 +462,11 @@ const renderWidget = () => {
 						height: 24px;
 						flex-shrink: 0;
 					}
+
 					.loading-indicator.hidden {
 						display: none;
 					}
+
 					.loading {
 						display: inline-block;
 						width: 1em;
@@ -467,6 +475,7 @@ const renderWidget = () => {
 						animation: spin 1s linear infinite;
 						color: #3b82f6;
 					}
+
 					@keyframes spin {
 						from {
 							transform: rotate(0deg);
@@ -481,99 +490,120 @@ const renderWidget = () => {
 						display: none;
 						flex-shrink: 0;
 					}
+
 					.astra-results-details {
-						margin-top: 1rem;
-						padding-top: 0.75rem;
-						border-top: 1px dashed #555; /* Separator */
-						background-color: rgba(255, 255, 255, 0.03); /* Slightly different background */
-						border-radius: 4px;
+						margin-top: 0.75rem;
+						padding-top: 0.5rem;
+						border-top: 1px dashed #444;
+						background-color: rgba(255, 255, 255, 0.03);
+						border-radius: 6px;
 						padding: 0.5rem;
 					}
+
 					.astra-results-summary {
 						cursor: pointer;
 						font-weight: 600;
-						color: #facc15; /* Yellowish color */
+						color: #facc15;
 						padding: 0.5rem 0.25rem;
-						outline: none; /* Remove focus outline */
+						outline: none;
 						transition: background-color 0.2s;
 						border-radius: 3px;
-						display: block; /* Ensure it takes full width */
+						display: block;
 					}
+
 					.astra-results-summary:hover {
 						background-color: rgba(255, 255, 255, 0.07);
 					}
-					/* Style the triangle marker */
+
 					.astra-results-summary::marker {
-						/* For Firefox */
 						color: #facc15;
 					}
+
 					.astra-results-summary::-webkit-details-marker {
-						/* For Chrome/Safari */
 						color: #facc15;
 					}
-					/* Add padding to the content revealed */
+
 					.astra-results-list {
 						padding-top: 0.75rem;
-						padding-right: 1.5rem; /* Indent the list slightly */
+						padding-right: 1.5rem;
 						font-size: 0.9em;
 						opacity: 0.9;
 					}
+
 					.astra-doc {
 						margin-bottom: 0.75rem;
 						padding-bottom: 0.5rem;
-						border-bottom: 1px solid #444; /* Separator between docs */
+						border-bottom: 1px solid #333;
 					}
+
 					.astra-doc:last-child {
-						border-bottom: none; /* Remove border from last item */
+						border-bottom: none;
 						margin-bottom: 0;
 					}
+
 					.explanation-text {
 						font-size: 0.85em;
-						color: #a0a0a0; /* Lighter gray */
+						color: #a0a0a0;
 						text-align: right;
-						margin: 5px 5px 10px 5px; /* Top, Right, Bottom, Left */
+						margin: 5px 0 10px 0;
 						line-height: 1.5;
 						padding: 0 0.5rem;
+						background-color: rgba(59, 130, 246, 0.05);
+						border-radius: 6px;
+						padding: 0.5rem;
 					}
+
 					.credits-text {
 						font-size: 0.8em;
 						color: #777;
-						text-align: center; /* Center credits */
+						text-align: center;
 						margin-top: auto;
-						padding-top: 10px;
+						padding-top: 8px;
 						flex-shrink: 0;
 					}
+
 					#user-info-form {
-						padding: 1rem 0.5rem;
+						padding: 1rem;
 						flex-shrink: 0;
+						background-color: #1d1d1d;
+						border-radius: 8px;
+						margin-bottom: 0.5rem;
 					}
+
 					#user-info-form .form-grid {
 						display: grid;
 						grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 						gap: 0.75rem;
 						margin-bottom: 1rem;
 					}
+
 					#user-info-form label {
 						display: block;
 						font-size: 0.9em;
 						margin-bottom: 0.25rem;
 						color: #ccc;
 					}
-					#user-info-form input[type="text"], #user-info-form input[type="tel"], #user-info-form input[type="email"] /* Added email */ {
+
+					#user-info-form input[type='text'],
+					#user-info-form input[type='tel'],
+					#user-info-form input[type='email'] {
 						width: 100%;
 						background-color: #2d2d2d;
 						color: #e0e0e0;
 						border: 1px solid #444;
 						padding: 0.5rem 0.8rem;
-						border-radius: 0.375rem;
+						border-radius: 0.5rem;
 						font-size: 0.95em;
 						box-sizing: border-box;
+						transition: all 0.2s ease;
 					}
+
 					#user-info-form input:focus {
 						outline: none;
 						border-color: #3b82f6;
-						box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+						box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
 					}
+
 					#user-info-form button {
 						width: 100%;
 						background-color: #16a34a;
@@ -582,47 +612,53 @@ const renderWidget = () => {
 						border: none;
 						border-radius: 0.5rem;
 						cursor: pointer;
-						transition: background-color 0.2s ease;
+						transition: all 0.2s ease;
 						font-family: 'Vazirmatn', sans-serif;
 						font-weight: 600;
-						margin-top: 0.5rem; /* Add margin top */
+						margin-top: 0.5rem;
 					}
+
 					#user-info-form button:hover {
 						background-color: #15803d;
+						transform: translateY(-1px);
 					}
+
 					#user-info-note {
 						font-size: 0.8em;
 						color: #888;
 						text-align: right;
 						margin-bottom: 1rem;
 					}
-					/* --- ADDED: Styles for Remember Me Checkbox --- */
+
+					/* Remember Me Checkbox */
 					.remember-me-container {
 						display: flex;
 						align-items: center;
 						gap: 0.5rem;
 						margin-bottom: 1rem;
-						cursor: pointer; /* Make the label clickable */
+						cursor: pointer;
 					}
+
 					.remember-me-container input[type='checkbox'] {
 						cursor: pointer;
-						accent-color: #3b82f6; /* Style checkbox color */
+						accent-color: #3b82f6;
 						width: 16px;
 						height: 16px;
 					}
+
 					.remember-me-container label {
 						font-size: 0.9em;
 						color: #bbb;
-						margin-bottom: 0; /* Remove default label margin */
-						user-select: none; /* Prevent text selection */
+						margin-bottom: 0;
+						user-select: none;
 					}
-					/* --- End Remember Me Styles --- */
+
 					#chat-input-area.hidden,
 					#user-info-form.hidden {
 						display: none;
 					}
 
-					/* --- ADDED: Styles for Welcome Message --- */
+					/* Welcome Message */
 					#welcome-back-message {
 						font-size: 0.9em;
 						color: #a0a0a0;
@@ -630,9 +666,12 @@ const renderWidget = () => {
 						padding: 0.5rem 0.75rem;
 						margin-bottom: 0.5rem;
 						border-bottom: 1px solid #333;
-						display: none; /* Hidden by default */
+						display: none;
 						flex-shrink: 0;
+						background-color: rgba(59, 130, 246, 0.1);
+						border-radius: 6px;
 					}
+
 					#chat-actions-container {
 						position: absolute;
 						top: 10px;
@@ -642,8 +681,9 @@ const renderWidget = () => {
 						gap: 8px;
 						direction: ltr;
 					}
+
 					#chat-actions-container button {
-						background-color: #555;
+						background-color: rgba(85, 85, 85, 0.8);
 						color: #eee;
 						border: none;
 						border-radius: 4px;
@@ -651,144 +691,174 @@ const renderWidget = () => {
 						cursor: pointer;
 						font-size: 0.8em;
 						line-height: 1;
-						transition: background-color 0.2s;
+						transition: all 0.2s ease;
 						display: flex;
 						align-items: center;
 						gap: 4px;
+						backdrop-filter: blur(2px);
 					}
+
 					#chat-actions-container button:hover:not(:disabled) {
-						background-color: #666;
+						background-color: rgba(102, 102, 102, 0.9);
+						transform: translateY(-1px);
 					}
+
 					#chat-actions-container button:disabled {
 						opacity: 0.5;
 						cursor: not-allowed;
 					}
+
 					#chat-actions-container.hidden {
 						display: none;
 					}
 
 					#chat-actions-container button i {
-						margin-right: 0; /* Remove previous margin */
+						margin-right: 0;
 					}
-					/* Hide initially */
 
 					.message-action-button {
-						background-color: #555; /* Darker gray */
+						background-color: rgba(85, 85, 85, 0.7);
 						color: #eee;
 						border: none;
 						border-radius: 4px;
 						padding: 3px 6px;
 						cursor: pointer;
-						font-size: 0.75em; /* Smaller font */
+						font-size: 0.75em;
 						line-height: 1;
-						transition: background-color 0.2s;
+						transition: all 0.2s ease;
 					}
+
 					.message-action-button:hover {
-						background-color: #666;
+						background-color: rgba(102, 102, 102, 0.8);
+						transform: translateY(-1px);
 					}
+
 					.message-action-button i {
-						/* Style font awesome icons */
 						margin-right: 3px;
 					}
-					/* --- End Copy/Share Styles --- */
+
+					/* Light Theme Switch - Optional for future use */
+					.theme-switch {
+						position: absolute;
+						top: 10px;
+						right: 15px;
+						z-index: 10;
+						background-color: rgba(85, 85, 85, 0.5);
+						border-radius: 20px;
+						padding: 3px;
+						transition: all 0.2s ease;
+						backdrop-filter: blur(2px);
+						display: flex;
+						align-items: center;
+						cursor: pointer;
+					}
+
+					.theme-switch:hover {
+						background-color: rgba(102, 102, 102, 0.7);
+					}
+
+					.theme-switch-icon {
+						width: 16px;
+						height: 16px;
+						color: #eee;
+					}
 				</style>
 			</head>
 			<body>
 				<div class="alumglass-widget">
-
-         <!-- Tab Buttons -->
-         <div id="tab-buttons">
-             <button id="chat-tab-button" class="tab-button active">گفتگو</button>
-             <button id="search-tab-button" class="tab-button">جستجوی برداری</button>
-         </div>
-
-         <!-- Tab Content Area -->
-         <div id="tab-content">
-
-             <!-- Chat Tab Pane (Initially Active) -->
-             <div id="chat-tab-content" class="tab-pane active">
-                 <h2>گفتگو با هوش مصنوعی</h2>
-                 <div id="welcome-back-message" style="display: none;"></div> <!-- Welcome message -->
-                 <div id="chat-actions-container" class="hidden"> <!-- Actions -->
-                     <button id="copy-last-button" disabled><i class="fas fa-copy"></i> کپی آخرین پاسخ</button>
-                     <button id="share-chat-button" disabled><i class="fas fa-share-alt"></i> اشتراک گفتگو</button>
-                 </div>
-						<p class="explanation-text">
-							این دستیار از هوش مصنوعی پیشرفته به همراه جستجو در پایگاه داده تخصصی مباحث مقررات ملی ساختمان (روش RAG) برای ارائه پاسخ‌های
-							دقیق استفاده می‌کند. تاریخچه گفتگو برای بهبود زمینه پاسخ‌ها ذخیره می‌شود.
-						</p>
-						<div id="chat-messages" class="chat-messages">
-							<!-- Initial message(s) might change based on login state -->
-						</div>
-						<div id="chat-loading" class="loading-indicator hidden">
-							<svg class="loading" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-								<path
-									class="opacity-75"
-									fill="currentColor"
-									d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-								></path>
-							</svg>
-							<span class="ml-2">در حال پردازش چت...</span>
-						</div>
-						<div id="chat-error" class="error-message general-error"></div>
-
-						<form id="user-info-form">
-							<!-- Use form element -->
-							<p id="user-info-note">برای تجربه بهتر، می‌توانید اطلاعات زیر را وارد کنید (اختیاری).</p>
-							<div class="form-grid">
-								<div>
-									<label for="user-name">نام و نام خانوادگی</label>
-									<input type="text" id="user-name" name="name" />
-								</div>
-								<div>
-									<label for="user-contact">ایمیل یا تلفن</label>
-									<input type="text" id="user-contact" name="contact" />
-									<!-- Generic text input -->
-								</div>
-							</div>
-
-							<div class="remember-me-container">
-								<input type="checkbox" id="remember-me" name="rememberMe" />
-								<label for="remember-me">مرا در این دستگاه به خاطر بسپار</label>
-							</div>
-							<!-- End Remember Me -->
-							<button type="submit" id="start-chat-button">شروع گفتگو</button>
-							<!-- Changed to type="submit" -->
-						</form>
-						<!-- End User Info Form -->
-						<!-- Chat Input Area (Initially Hidden) -->
-						<div id="chat-input-area" class="input-area hidden">
-							<input id="chat-input" type="text" placeholder="سوال خود را برای چت بنویسید..." />
-							<button id="chat-send-button">ارسال</button>
-						</div>
-						<!-- End Chat Input Area -->
+					<!-- Tab Buttons -->
+					<div id="tab-buttons">
+						<button id="chat-tab-button" class="tab-button active"><i class="fas fa-comments"></i> گفتگو</button>
+						<button id="search-tab-button" class="tab-button"><i class="fas fa-search"></i> جستجوی برداری</button>
 					</div>
 
-					<!-- Search Tab Pane (Initially Hidden) -->
-             <div id="search-tab-content" class="tab-pane">
-                 <h2>جستجوی برداری</h2>
-						<p class="explanation-text">مستقیماً در میان متون فنی و تخصصی پایگاه داده جستجو کنید.</p>
-						<div class="input-area">
-							<input id="searchInput" type="text" placeholder="عبارت جستجو برداری..." />
-							<button id="searchButton">جستجو</button>
+					<!-- Tab Content Area -->
+					<div id="tab-content">
+						<!-- Chat Tab Pane (Initially Active) -->
+						<div id="chat-tab-content" class="tab-pane active">
+							<h2>گفتگو با هوش مصنوعی</h2>
+							<div id="welcome-back-message" style="display: none;"></div>
+							<!-- Welcome message -->
+							<div id="chat-actions-container" class="hidden">
+								<!-- Actions -->
+								<button id="copy-last-button" disabled><i class="fas fa-copy"></i> کپی آخرین پاسخ</button>
+								<button id="share-chat-button" disabled><i class="fas fa-share-alt"></i> اشتراک گفتگو</button>
+							</div>
+							<p class="explanation-text">
+								این دستیار از هوش مصنوعی پیشرفته به همراه جستجو در پایگاه داده تخصصی مباحث مقررات ملی ساختمان (روش RAG) برای ارائه پاسخ‌های
+								دقیق استفاده می‌کند. تاریخچه گفتگو برای بهبود زمینه پاسخ‌ها ذخیره می‌شود.
+							</p>
+							<div id="chat-messages" class="chat-messages">
+								<!-- Initial message(s) might change based on login state -->
+							</div>
+							<div id="chat-loading" class="loading-indicator hidden">
+								<svg class="loading" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+									<path
+										class="opacity-75"
+										fill="currentColor"
+										d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+									></path>
+								</svg>
+								<span class="ml-2">در حال پردازش چت...</span>
+							</div>
+							<div id="chat-error" class="error-message general-error"></div>
+
+							<form id="user-info-form">
+								<p id="user-info-note"><i class="fas fa-user-circle"></i> برای تجربه بهتر، می‌توانید اطلاعات زیر را وارد کنید (اختیاری).</p>
+								<div class="form-grid">
+									<div>
+										<label for="user-name"><i class="fas fa-user"></i> نام و نام خانوادگی</label>
+										<input type="text" id="user-name" name="name" placeholder="نام شما..." />
+									</div>
+									<div>
+										<label for="user-contact"><i class="fas fa-envelope"></i> ایمیل یا تلفن</label>
+										<input type="text" id="user-contact" name="contact" placeholder="راه ارتباطی..." />
+									</div>
+								</div>
+
+								<div class="remember-me-container">
+									<input type="checkbox" id="remember-me" name="rememberMe" />
+									<label for="remember-me"><i class="fas fa-save"></i> مرا در این دستگاه به خاطر بسپار</label>
+								</div>
+								<!-- End Remember Me -->
+								<button type="submit" id="start-chat-button"><i class="fas fa-paper-plane"></i> شروع گفتگو</button>
+							</form>
+							<!-- End User Info Form -->
+							<!-- Chat Input Area (Initially Hidden) -->
+							<div id="chat-input-area" class="input-area hidden">
+								<input id="chat-input" type="text" placeholder="سوال خود را برای چت بنویسید..." />
+								<button id="chat-send-button"><i class="fas fa-paper-plane"></i> ارسال</button>
+							</div>
+							<!-- End Chat Input Area -->
+							<p class="credits-text">تهیه شده توسط تیم تحقیق و توسعه آلوم‌گلس <i class="fas fa-heart" style="color:#e25555;"></i></p>
 						</div>
-						<div id="search-loading" class="loading-indicator hidden">
-							<svg class="loading" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-								<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-								<path
-									class="opacity-75"
-									fill="currentColor"
-									d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-								></path>
-							</svg>
-							<span class="ml-2">در حال جستجو...</span>
+
+						<!-- Search Tab Pane (Initially Hidden) -->
+						<div id="search-tab-content" class="tab-pane">
+							<h2><i class="fas fa-search"></i> جستجوی برداری</h2>
+							<p class="explanation-text"><i class="fas fa-info-circle"></i> مستقیماً در میان متون فنی و تخصصی پایگاه داده جستجو کنید.</p>
+							<div class="input-area">
+								<input id="searchInput" type="text" placeholder="عبارت جستجو برداری..." />
+								<button id="searchButton"><i class="fas fa-search"></i> جستجو</button>
+							</div>
+							<div id="search-loading" class="loading-indicator hidden">
+								<svg class="loading" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+									<path
+										class="opacity-75"
+										fill="currentColor"
+										d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+									></path>
+								</svg>
+								<span class="ml-2">در حال جستجو...</span>
+							</div>
+							<div id="search-error" class="error-message general-error"></div>
+							<!-- Dedicated error div -->
+							<div id="results"></div>
+							<!-- Search results appear here -->
+							<p class="credits-text">تهیه شده توسط تیم تحقیق و توسعه آلوم‌گلس <i class="fas fa-heart" style="color:#e25555;"></i></p>
 						</div>
-						<div id="search-error" class="error-message general-error"></div>
-						<!-- Dedicated error div -->
-						<div id="results"></div>
-						<!-- Search results appear here -->
-						<p class="credits-text">تهیه شده توسط تیم تحقیق و توسعه آلوم‌گلس</p>
 					</div>
 				</div>
 
@@ -1045,24 +1115,24 @@ const renderWidget = () => {
 							else searchProcessing = false;
 						}
 					}
-						// --- Tab Switching Logic ---
-						function switchToTab(tabName) {
-							console.log("Widget: Switching to tab:", tabName);
-							// Update button active states
-							chatTabButton.classList.toggle('active', tabName === 'chat');
-							searchTabButton.classList.toggle('active', tabName === 'search');
+					// --- Tab Switching Logic ---
+					function switchToTab(tabName) {
+						console.log('Widget: Switching to tab:', tabName);
+						// Update button active states
+						chatTabButton.classList.toggle('active', tabName === 'chat');
+						searchTabButton.classList.toggle('active', tabName === 'search');
 
-							// Update pane visibility
-							chatTabContent.classList.toggle('active', tabName === 'chat');
-							searchTabContent.classList.toggle('active', tabName === 'search');
+						// Update pane visibility
+						chatTabContent.classList.toggle('active', tabName === 'chat');
+						searchTabContent.classList.toggle('active', tabName === 'search');
 
-							// Optionally focus input in the newly active tab
-							if (tabName === 'chat' && !chatInputArea.classList.contains('hidden')) {
-								chatInput.focus();
-							} else if (tabName === 'search') {
-								searchInput.focus();
-							}
+						// Optionally focus input in the newly active tab
+						if (tabName === 'chat' && !chatInputArea.classList.contains('hidden')) {
+							chatInput.focus();
+						} else if (tabName === 'search') {
+							searchInput.focus();
 						}
+					}
 
 					// --- Initialization Function ---
 					function initializeWidget() {
@@ -1207,7 +1277,7 @@ const renderWidget = () => {
 
 					// --- Event Listeners ---
 					chatTabButton.addEventListener('click', () => switchToTab('chat'));
-        			searchTabButton.addEventListener('click', () => switchToTab('search'));
+					searchTabButton.addEventListener('click', () => switchToTab('search'));
 					startChatButton.addEventListener('click', handleUserInfoSubmit);
 					chatSendButton.addEventListener('click', handleSendChat);
 					chatInput.addEventListener('keypress', (e) => {
@@ -1294,10 +1364,10 @@ const renderWidget = () => {
 						}
 					});
 					// --- Initialize on Load ---
-					 document.addEventListener('DOMContentLoaded', () => {
-							initializeWidget();
-							switchToTab('chat'); // Ensure chat tab is active by default
-						});
+					document.addEventListener('DOMContentLoaded', () => {
+						initializeWidget();
+						switchToTab('chat'); // Ensure chat tab is active by default
+					});
 				</script>
 			</body>
 		</html>

@@ -127,10 +127,34 @@
 				margin: 20px auto;
 				display: none; /* Hidden until error occurs */
 			}
+			 .back-button-container {
+           text-align: center; /* Center the button */
+           margin-bottom: 25px; /* Space below the button */
+       }
+       .back-button {
+           display: inline-block; /* Allow padding and centering */
+           padding: 10px 20px;
+           background-color: #3b82f6; /* Match widget button blue */
+           color: white;
+           text-decoration: none;
+           border-radius: 5px;
+           font-size: 0.95em;
+           font-weight: 500;
+           transition: background-color 0.2s ease;
+           border: 1px solid #2563eb;
+       }
+       .back-button:hover {
+           background-color: #2563eb; /* Darker blue on hover */
+           color: white;
+       }
 		</style>
 	</head>
 	<body>
 		<h1>تاریخچه گفتگو</h1>
+		<div class="back-button-container">
+			<a href="/bhrcode/" class="back-button">بازگشت به صفحه گفتگو</a>
+			<!-- ^^^ CHANGE "/ai-assistant/" to the correct URL of your main widget page -->
+		</div>
 		<div id="loading-history">در حال بارگذاری تاریخچه...</div>
 		<div id="error-history"></div>
 		<div id="history-container">
