@@ -1,280 +1,342 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>تاریخچه گفتگو</title>
-		<link rel="preconnect" href="https://fonts.googleapis.com" />
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-		<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet" />
-		<link
-			href="https://fonts.googleapis.com/css2?family=Lateef:wght@200;300;400;500;600;700;800&family=Vazirmatn:wght@100..900&display=swap"
-			rel="stylesheet"/>
 
-		<!-- Markdown Renderer -->
-		<script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>تاریخچه گفتگو</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet" />
+	<link
+		href="https://fonts.googleapis.com/css2?family=Lateef:wght@200;300;400;500;600;700;800&family=Vazirmatn:wght@100..900&display=swap"
+		rel="stylesheet" />
 
-		<style>
-			body {
-				font-family: 'Vazirmatn', sans-serif;
-				padding: 20px;
-				background-color: #121212; /* Dark background */
-				color: #e0e0e0; /* Light text */
-				line-height: 1.6;
-			}
-			h1 {
-				color: #141313;
-				text-align: center;
-				margin-bottom: 30px;
-				font-weight: 600;
-			}
-			#history-container {
-				background-color: #1e1e1e; /* Darker container background */
-				border: 1px solid #333;
-				padding: 25px;
-				border-radius: 8px;
-				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-				display: none; /* Hidden until loaded */
-				max-width: 900px; /* Limit width for readability */
-				margin: 20px auto; /* Center container */
-				font-family: 'Lateef', serif; /* Match chat message font */
-			}
-			.message {
-				margin-bottom: 15px;
-				padding: 10px 15px;
-				border-radius: 0.5rem; /* Match widget bubble radius */
-				max-width: 85%; /* Match widget width */
-				word-wrap: break-word;
-				font-size: 1.2em; /* Match widget font size */
-				line-height: 1.7; /* Match widget line height */
-				border: 1px solid #444; /* Subtle border */
-			}
-			.user {
-				background-color: #2d4263; /* User blue */
-				color: #ffffff;
-				margin-left: auto; /* Align right */
-				text-align: right;
-			}
-			.bot {
-				background-color: #383838; /* Bot gray */
-				color: #ffffff;
-				margin-right: auto; /* Align left */
-				text-align: right; /* Keep text right-aligned */
-			}
-			/* Styles for markdown content within bot messages */
-			.bot p {
-				margin-bottom: 0.5em;
-			} /* Spacing for paragraphs */
-			.bot p:last-child {
-				margin-bottom: 0;
-			}
-			.bot strong {
-				color: #a5d6ff;
-			} /* Style bold */
-			.bot a {
-				color: #7dd3fc;
-				text-decoration: underline;
-			} /* Style links */
-			.bot a:hover {
-				color: #a5d6ff;
-			}
-			.bot ul,
-			.bot ol {
-				padding-right: 20px;
-				margin-top: 0.5em;
-				margin-bottom: 0.5em;
-			} /* List styling */
-			.bot code {
-				background-color: #555;
-				padding: 0.2em 0.4em;
-				border-radius: 3px;
-				font-size: 0.9em;
-			} /* Code blocks */
-			.bot pre {
-				background-color: #222;
-				padding: 10px;
-				border-radius: 5px;
-				overflow-x: auto;
-				font-size: 0.9em;
-				margin: 0.5em 0;
-			}
-			.bot pre code {
-				background-color: transparent;
-				padding: 0;
+	<!-- Markdown Renderer -->
+	<script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
+
+	<style>
+		body {
+			font-family: 'Vazirmatn', sans-serif;
+			padding: 20px;
+			background-color: #121212;
+			/* Dark background */
+			color: #e0e0e0;
+			/* Light text */
+			line-height: 1.6;
+		}
+
+		h1 {
+			color: #141313;
+			text-align: center;
+			margin-bottom: 30px;
+			font-weight: 600;
+		}
+
+		#history-container {
+			background-color: #1e1e1e;
+			/* Darker container background */
+			border: 1px solid #333;
+			padding: 25px;
+			border-radius: 8px;
+			box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+			display: none;
+			/* Hidden until loaded */
+			max-width: 900px;
+			/* Limit width for readability */
+			margin: 20px auto;
+			/* Center container */
+			font-family: 'Lateef', serif;
+			/* Match chat message font */
+		}
+
+		.message {
+			margin-bottom: 15px;
+			padding: 10px 15px;
+			border-radius: 0.5rem;
+			/* Match widget bubble radius */
+			max-width: 85%;
+			/* Match widget width */
+			word-wrap: break-word;
+			font-size: 1.2em;
+			/* Match widget font size */
+			line-height: 1.7;
+			/* Match widget line height */
+			border: 1px solid #444;
+			/* Subtle border */
+		}
+
+		.user {
+			background-color: #2d4263;
+			/* User blue */
+			color: #ffffff;
+			margin-left: auto;
+			/* Align right */
+			text-align: right;
+		}
+
+		.bot {
+			background-color: #383838;
+			/* Bot gray */
+			color: #ffffff;
+			margin-right: auto;
+			/* Align left */
+			text-align: right;
+			/* Keep text right-aligned */
+		}
+
+		/* Styles for markdown content within bot messages */
+		.bot p {
+			margin-bottom: 0.5em;
+		}
+
+		/* Spacing for paragraphs */
+		.bot p:last-child {
+			margin-bottom: 0;
+		}
+
+		.bot strong {
+			color: #a5d6ff;
+		}
+
+		/* Style bold */
+		.bot a {
+			color: #7dd3fc;
+			text-decoration: underline;
+		}
+
+		/* Style links */
+		.bot a:hover {
+			color: #a5d6ff;
+		}
+
+		.bot ul,
+		.bot ol {
+			padding-right: 20px;
+			margin-top: 0.5em;
+			margin-bottom: 0.5em;
+		}
+
+		/* List styling */
+		.bot code {
+			background-color: #555;
+			padding: 0.2em 0.4em;
+			border-radius: 3px;
+			font-size: 0.9em;
+		}
+
+		/* Code blocks */
+		.bot pre {
+			background-color: #222;
+			padding: 10px;
+			border-radius: 5px;
+			overflow-x: auto;
+			font-size: 0.9em;
+			margin: 0.5em 0;
+		}
+
+		.bot pre code {
+			background-color: transparent;
+			padding: 0;
+		}
+
+		.timestamp {
+			font-size: 0.75em;
+			color: #9ca3af;
+			/* Lighter gray for timestamp */
+			margin-top: 8px;
+			text-align: inherit;
+			/* Inherit alignment from .user or .bot */
+			display: block;
+			/* Ensure it takes its own line */
+		}
+
+		#loading-history {
+			text-align: center;
+			padding: 30px;
+			color: #b0b0b0;
+			/* Loading text color */
+			font-size: 1.1em;
+		}
+
+		#error-history {
+			color: #fca5a5;
+			/* Lighter red for error text */
+			background-color: #7f1d1d;
+			/* Dark red background for error */
+			border: 1px solid #924040;
+			text-align: center;
+			padding: 15px;
+			border-radius: 5px;
+			max-width: 600px;
+			margin: 20px auto;
+			display: none;
+			/* Hidden until error occurs */
+		}
+
+		.back-button-container {
+			text-align: center;
+			/* Center the button */
+			margin-bottom: 25px;
+			/* Space below the button */
+		}
+
+		.back-button {
+			display: inline-block;
+			/* Allow padding and centering */
+			padding: 10px 20px;
+			background-color: #3b82f6;
+			/* Match widget button blue */
+			color: white;
+			text-decoration: none;
+			border-radius: 5px;
+			font-size: 0.95em;
+			font-weight: 500;
+			transition: background-color 0.2s ease;
+			border: 1px solid #2563eb;
+		}
+
+		.back-button:hover {
+			background-color: #2563eb;
+			/* Darker blue on hover */
+			color: white;
+		}
+
+		#user-info-display {
+			text-align: right;
+			margin-bottom: 20px;
+			padding: 10px;
+			background-color: #2a2a2a;
+			/* Slightly different dark shade */
+			border-radius: 5px;
+			font-size: 0.9em;
+			color: #ccc;
+		}
+
+		#user-info-display p {
+			margin: 3px 0;
+		}
+	</style>
+</head>
+
+<body>
+	<h1>تاریخچه گفتگو</h1>
+	<div class="back-button-container">
+		<a href="/bhrcode/" class="back-button">بازگشت به صفحه گفتگو</a>
+		<!-- ^^^ CHANGE "/ai-assistant/" to the correct URL of your main widget page -->
+	</div>
+	<div id="user-info-display" style="display: none;">
+		<!-- User info will be loaded here -->
+	</div>
+	<div id="loading-history">در حال بارگذاری تاریخچه...</div>
+	<div id="error-history"></div>
+	<div id="history-container">
+		<!-- History will be loaded here -->
+	</div>
+
+	<script>
+		const historyContainer = document.getElementById('history-container');
+		const loadingDiv = document.getElementById('loading-history');
+		const errorDiv = document.getElementById('error-history');
+		const userInfoDisplayDiv = document.getElementById('user-info-display');
+		// --- DEFINE YOUR WORKER'S BASE URL ---
+		const workerApiBaseUrl = 'https://bhrwidget.aihoore.ir'; // Important! Use your actual worker URL
+		const md = new markdownit({ breaks: true, linkify: true, typographer: true });
+		async function loadHistory() {
+			const urlParams = new URLSearchParams(window.location.search);
+			const sessionId = urlParams.get('session');
+
+			if (!sessionId) {
+				showErrorHistory('شناسه گفتگو یافت نشد.');
+				return;
 			}
 
-			.timestamp {
-				font-size: 0.75em;
-				color: #9ca3af; /* Lighter gray for timestamp */
-				margin-top: 8px;
-				text-align: inherit; /* Inherit alignment from .user or .bot */
-				display: block; /* Ensure it takes its own line */
-			}
-			#loading-history {
-				text-align: center;
-				padding: 30px;
-				color: #b0b0b0; /* Loading text color */
-				font-size: 1.1em;
-			}
-			#error-history {
-				color: #fca5a5; /* Lighter red for error text */
-				background-color: #7f1d1d; /* Dark red background for error */
-				border: 1px solid #924040;
-				text-align: center;
-				padding: 15px;
-				border-radius: 5px;
-				max-width: 600px;
-				margin: 20px auto;
-				display: none; /* Hidden until error occurs */
-			}
-			 .back-button-container {
-           text-align: center; /* Center the button */
-           margin-bottom: 25px; /* Space below the button */
-       }
-       .back-button {
-           display: inline-block; /* Allow padding and centering */
-           padding: 10px 20px;
-           background-color: #3b82f6; /* Match widget button blue */
-           color: white;
-           text-decoration: none;
-           border-radius: 5px;
-           font-size: 0.95em;
-           font-weight: 500;
-           transition: background-color 0.2s ease;
-           border: 1px solid #2563eb;
-       }
-       .back-button:hover {
-           background-color: #2563eb; /* Darker blue on hover */
-           color: white;
-       }
-	    #user-info-display {
-            text-align: right;
-            margin-bottom: 20px;
-            padding: 10px;
-            background-color: #2a2a2a; /* Slightly different dark shade */
-            border-radius: 5px;
-            font-size: 0.9em;
-            color: #ccc;
-        }
-        #user-info-display p {
-            margin: 3px 0;
-        }
-		</style>
-	</head>
-	<body>
-		<h1>تاریخچه گفتگو</h1>
-		<div class="back-button-container">
-			<a href="/bhrcode/" class="back-button">بازگشت به صفحه گفتگو</a>
-			<!-- ^^^ CHANGE "/ai-assistant/" to the correct URL of your main widget page -->
-		</div>
-		<div id="user-info-display" style="display: none;">
-			<!-- User info will be loaded here -->
-		</div>
-		<div id="loading-history">در حال بارگذاری تاریخچه...</div>
-		<div id="error-history"></div>
-		<div id="history-container">
-			<!-- History will be loaded here -->
-		</div>
+			const historyApiUrl = `${workerApiBaseUrl}/api/get-history/${sessionId}`;
+			console.log('Fetching history from:', historyApiUrl);
 
-		<script>
-			const historyContainer = document.getElementById('history-container');
-			const loadingDiv = document.getElementById('loading-history');
-			const errorDiv = document.getElementById('error-history');
-			const userInfoDisplayDiv = document.getElementById('user-info-display');
-			// --- DEFINE YOUR WORKER'S BASE URL ---
-			const workerApiBaseUrl = 'https://bhrwidget.aihoore.ir'; // Important! Use your actual worker URL
-			const md = new markdownit({ breaks: true, linkify: true, typographer: true });
-			async function loadHistory() {
-				const urlParams = new URLSearchParams(window.location.search);
-				const sessionId = urlParams.get('session');
-
-				if (!sessionId) {
-					showErrorHistory('شناسه گفتگو یافت نشد.');
-					return;
+			try {
+				const response = await fetch(historyApiUrl); // Fetch from the full URL
+				if (!response.ok) {
+					let errorMsg = `خطا در دریافت تاریخچه: ${response.status}`;
+					try {
+						// Try parsing error from worker's JSON response
+						const errorJson = await response.json();
+						errorMsg = errorJson.error || errorMsg;
+					} catch (parseError) {
+						// If parsing fails, use the status text
+						console.warn('Could not parse error response body:', parseError);
+						errorMsg = response.statusText || errorMsg;
+					}
+					throw new Error(errorMsg);
 				}
 
-				const historyApiUrl = `${workerApiBaseUrl}/api/get-history/${sessionId}`;
-				console.log('Fetching history from:', historyApiUrl);
-
-				try {
-					const response = await fetch(historyApiUrl); // Fetch from the full URL
-					if (!response.ok) {
-						let errorMsg = `خطا در دریافت تاریخچه: ${response.status}`;
-						try {
-							// Try parsing error from worker's JSON response
-							const errorJson = await response.json();
-							errorMsg = errorJson.error || errorMsg;
-						} catch (parseError) {
-							// If parsing fails, use the status text
-							console.warn('Could not parse error response body:', parseError);
-							errorMsg = response.statusText || errorMsg;
-						}
-						throw new Error(errorMsg);
-					}
-
-					const history = await response.json();
-					displayHistory(history);
-				} catch (error) {
-					console.error('Error loading history:', error);
-					showErrorHistory(error.message || 'خطای ناشناخته در بارگذاری تاریخچه.');
-				} finally {
-					loadingDiv.style.display = 'none';
+				const data = await response.json();
+				if (data.userInfo) {
+					displayUserInfo(data.userInfo);
 				}
-			}
-
-			function displayUserInfo(userInfo) {
-					if (!userInfo || (!userInfo.name && !userInfo.contact)) {
-						userInfoDisplayDiv.style.display = 'none';
-						return;
-					}
-					let infoHtml = '<h4>اطلاعات کاربر ارائه شده:</h4>';
-					if (userInfo.name) {
-						infoHtml += `<p><strong>نام:</strong> ${userInfo.name}</p>`;
-					}
-					if (userInfo.contact) {
-						infoHtml += `<p><strong>اطلاعات تماس:</strong> ${userInfo.contact}</p>`;
-					}
-					userInfoDisplayDiv.innerHTML = infoHtml;
-					userInfoDisplayDiv.style.display = 'block';
-				}
-
-			function displayHistory(history) {
-				if (!history || history.length === 0) {
-					historyContainer.innerHTML = '<p>تاریخچه‌ای برای این گفتگو یافت نشد.</p>';
-					historyContainer.style.display = 'block';
-					return;
-				}
-
-				historyContainer.innerHTML = ''; // Clear previous
-				history.forEach((msg) => {
-					const msgDiv = document.createElement('div');
-					msgDiv.classList.add('message', msg.role); // 'user' or 'bot'
-					const contentDiv = document.createElement('div');
-					if (msg.role === 'bot') {
-						contentDiv.innerHTML = md.render(msg.content); // Use markdown renderer
-					} else {
-						contentDiv.textContent = msg.content; // Keep user text plain
-					}
-					msgDiv.appendChild(contentDiv);
-
-					const timeDiv = document.createElement('div');
-					timeDiv.classList.add('timestamp');
-					timeDiv.textContent = new Date(msg.timestamp).toLocaleString('fa-IR');
-					msgDiv.appendChild(timeDiv);
-
-					historyContainer.appendChild(msgDiv);
-				});
-				historyContainer.style.display = 'block';
-			}
-			function showErrorHistory(message) {
-				errorDiv.textContent = message;
-				errorDiv.style.display = 'block';
+				displayHistory(data.history);
+			} catch (error) {
+				console.error('Error loading history:', error);
+				showErrorHistory(error.message || 'خطای ناشناخته در بارگذاری تاریخچه.');
+			} finally {
 				loadingDiv.style.display = 'none';
-				historyContainer.style.display = 'none';
+			}
+		}
+
+		function displayUserInfo(userInfo) {
+			if (!userInfo || (!userInfo.name && !userInfo.contact)) {
+				userInfoDisplayDiv.style.display = 'none';
+				return;
+			}
+			let infoHtml = '<h4>اطلاعات کاربر ارائه شده:</h4>';
+			if (userInfo.name) {
+				infoHtml += `<p><strong>نام:</strong> ${userInfo.name}</p>`;
+			}
+			if (userInfo.contact) {
+				infoHtml += `<p><strong>اطلاعات تماس:</strong> ${userInfo.contact}</p>`;
+			}
+			userInfoDisplayDiv.innerHTML = infoHtml;
+			userInfoDisplayDiv.style.display = 'block';
+		}
+
+		function displayHistory(history) {
+			if (!history || history.length === 0) {
+				historyContainer.innerHTML = '<p>تاریخچه‌ای برای این گفتگو یافت نشد.</p>';
+				historyContainer.style.display = 'block';
+				return;
 			}
 
-			// Load history when the page loads
-			document.addEventListener('DOMContentLoaded', loadHistory);
-		</script>
-	</body>
+			historyContainer.innerHTML = ''; // Clear previous
+			history.forEach((msg) => {
+				const msgDiv = document.createElement('div');
+				msgDiv.classList.add('message', msg.role); // 'user' or 'bot'
+				const contentDiv = document.createElement('div');
+				if (msg.role === 'bot') {
+					contentDiv.innerHTML = md.render(msg.content); // Use markdown renderer
+				} else {
+					contentDiv.textContent = msg.content; // Keep user text plain
+				}
+				msgDiv.appendChild(contentDiv);
+
+				const timeDiv = document.createElement('div');
+				timeDiv.classList.add('timestamp');
+				timeDiv.textContent = new Date(msg.timestamp).toLocaleString('fa-IR');
+				msgDiv.appendChild(timeDiv);
+
+				historyContainer.appendChild(msgDiv);
+			});
+			historyContainer.style.display = 'block';
+		}
+		function showErrorHistory(message) {
+			errorDiv.textContent = message;
+			errorDiv.style.display = 'block';
+			loadingDiv.style.display = 'none';
+			historyContainer.style.display = 'none';
+		}
+
+		// Load history when the page loads
+		document.addEventListener('DOMContentLoaded', loadHistory);
+	</script>
+</body>
+
 </html>

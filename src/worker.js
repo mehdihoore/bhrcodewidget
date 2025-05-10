@@ -142,7 +142,50 @@ async function getLatestProvidedUserInfo(db, sessionId) {
 		return null;
 	}
 }
+async function findSessionIdsByContact(db, contactInfo) {
+	if (!contactInfo) return [];
+	try {
+		console.log(`Worker: Finding session IDs for contact: ${contactInfo}`);
+		// Find distinct session_ids where the user_contact_provided matches
+		// We also check user_name_provided if you want to allow search by name, though contact is better.
+		const stmt = db
+			.prepare(
+				`SELECT DISTINCT session_id
+             FROM chat_history
+             WHERE user_contact_provided = ? OR user_name_provided = ?` // Allow search by name too if desired
+			)
+			.bind(contactInfo, contactInfo); // Bind contactInfo to both placeholders
 
+		const { results } = await stmt.all();
+		return results ? results.map((row) => row.session_id) : [];
+	} catch (error) {
+		console.error(`Worker: Error finding session IDs by contact ${contactInfo}:`, error);
+		return [];
+	}
+}
+
+
+async function getAllChatHistoryForSessions(db, sessionIds) {
+	if (!sessionIds || sessionIds.length === 0) return [];
+	try {
+		console.log(`Worker: Fetching ALL messages for session IDs: ${sessionIds.join(', ')}`);
+		// Create a string of placeholders for the IN clause: (?, ?, ?)
+		const placeholders = sessionIds.map(() => '?').join(', ');
+
+		const query = `
+            SELECT message_id, session_id, role, content, timestamp, user_name_provided, user_contact_provided
+            FROM chat_history
+            WHERE session_id IN (${placeholders})
+            ORDER BY session_id, timestamp ASC`; // Order by session, then by time within session
+
+		const stmt = db.prepare(query).bind(...sessionIds); // Spread sessionIds into bind
+		const { results } = await stmt.all();
+		return results || [];
+	} catch (error) {
+		console.error(`Worker: Error fetching ALL chat history for multiple sessions:`, error);
+		return [];
+	}
+}
 const GEMINI_CHAT_KEY_ORDER = ['GEMINI_API_KEY_FREE', 'GEMINI_API_KEY_PAID1', 'GEMINI_API_KEY_128K', 'GEMINI_API_KEY_PAID2'];
 const GEMINI_EMBEDDING_KEY_VAR = 'GEMINI_API_KEY_EMBEDDING'; // Separate key for embedding
 const MAX_TOTAL_ATTEMPTS = 5; // Max tries across *all* keys for a single request

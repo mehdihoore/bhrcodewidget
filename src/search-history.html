@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جستجوی تاریخچه گفتگو</title>
+    <!-- Fonts & Markdown (same as chat-view) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lateef:wght@200;300;400;500;600;700;800&family=Vazirmatn:wght@100..900&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
+    <style>
+        body {
+            font-family: 'Vazirmatn', sans-serif;
+            padding: 20px;
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+
+        h1 {
+            color: #e0e0e0;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .search-form {
+            max-width: 500px;
+            margin: 0 auto 30px auto;
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-form input[type="text"] {
+            flex-grow: 1;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #444;
+            background-color: #2d2d2d;
+            color: #e0e0e0;
+            font-size: 1em;
+        }
+
+        .search-form button {
+            padding: 10px 20px;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .search-form button:hover {
+            background-color: #2563eb;
+        }
+
+        #results-area {
+            display: none;
+        }
+
+        .session-group {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+
+        .session-group h3 {
+            color: #3b82f6;
+            margin-top: 0;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 0.5rem;
+            /* Match widget bubble radius */
+            max-width: 85%;
+            /* Match widget width */
+            word-wrap: break-word;
+            font-size: 1.2em;
+            /* Match widget font size */
+            line-height: 1.7;
+            /* Match widget line height */
+            border: 1px solid #444;
+            /* Subtle border */
+        }
+
+        .user {
+            background-color: #2d4263;
+            /* User blue */
+            color: #ffffff;
+            margin-left: auto;
+            /* Align right */
+            text-align: right;
+        }
+
+
+        .bot {
+            background-color: #383838;
+            /* Bot gray */
+            color: #ffffff;
+            margin-right: auto;
+            /* Align left */
+            text-align: right;
+            /* Keep text right-aligned */
+        }
+
+        /* Styles for markdown content within bot messages */
+        .bot p {
+            margin-bottom: 0.5em;
+        }
+
+        /* Spacing for paragraphs */
+        .bot p:last-child {
+            margin-bottom: 0;
+        }
+
+        .bot strong {
+            color: #a5d6ff;
+        }
+
+        /* Style bold */
+        .bot a {
+            color: #7dd3fc;
+            text-decoration: underline;
+        }
+
+        /* Style links */
+        .bot a:hover {
+            color: #a5d6ff;
+        }
+
+        .bot ul,
+        .bot ol {
+            padding-right: 20px;
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+        }
+
+        /* List styling */
+        .bot code {
+            background-color: #555;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        /* Code blocks */
+        .bot pre {
+            background-color: #222;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 0.9em;
+            margin: 0.5em 0;
+        }
+
+        .bot pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+
+        .timestamp {
+            font-size: 0.75em;
+            color: #9ca3af;
+            /* Lighter gray for timestamp */
+            margin-top: 8px;
+            text-align: inherit;
+            /* Inherit alignment from .user or .bot */
+            display: block;
+            /* Ensure it takes its own line */
+        }
+
+        #loading-indicator,
+        #error-message {
+            text-align: center;
+            padding: 20px;
+            color: #aaa;
+        }
+
+        #error-message {
+            color: #fca5a5;
+            background-color: #7f1d1d;
+            border-radius: 5px;
+        }
+
+        .back-button-container {
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .back-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #065f46;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+
+        .back-button:hover {
+            background-color: #047857;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>جستجوی تاریخچه گفتگو بر اساس اطلاعات تماس</h1>
+
+    <div class="back-button-container">
+        <a href="/ai-assistant/" class="back-button">بازگشت به صفحه اصلی گفتگو</a>
+    </div>
+
+    <div class="search-form">
+        <input type="text" id="contact-input" placeholder="ایمیل یا شماره تلفن را وارد کنید...">
+        <button id="search-contact-button">جستجو</button>
+    </div>
+
+    <div id="loading-indicator" style="display: none;">در حال جستجو...</div>
+    <div id="error-message" style="display: none;"></div>
+    <div id="results-area">
+        <!-- Search results will be grouped by session here -->
+    </div>
+
+    <script>
+        const contactInput = document.getElementById('contact-input');
+        const searchButton = document.getElementById('search-contact-button');
+        const resultsArea = document.getElementById('results-area');
+        const loadingDiv = document.getElementById('loading-indicator');
+        const errorDiv = document.getElementById('error-message');
+        const workerApiBaseUrl = 'https://bhrwidget.aihoore.ir';
+        const md = new markdownit({ breaks: true, linkify: true, typographer: true });
+
+        searchButton.addEventListener('click', searchHistory);
+        contactInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchHistory();
+        });
+
+        async function searchHistory() {
+            const contactInfo = contactInput.value.trim();
+            if (!contactInfo) {
+                showError("لطفا اطلاعات تماس را وارد کنید.");
+                return;
+            }
+
+            loadingDiv.style.display = 'block';
+            errorDiv.style.display = 'none';
+            resultsArea.innerHTML = '';
+            resultsArea.style.display = 'none';
+
+            const searchApiUrl = `${workerApiBaseUrl}/api/search-history-by-contact/${encodeURIComponent(contactInfo)}`;
+            console.log("Searching history from:", searchApiUrl);
+
+            try {
+                const response = await fetch(searchApiUrl);
+                if (!response.ok) {
+                    let errorMsg = `خطا در جستجو: ${response.status}`;
+                    try { errorMsg = (await response.json()).error || errorMsg; } catch { }
+                    throw new Error(errorMsg);
+                }
+                const history = await response.json(); // Expecting an array of all messages
+                displayGroupedHistory(history);
+
+            } catch (error) {
+                console.error("Error searching history:", error);
+                showError(error.message || "خطای ناشناخته در جستجو.");
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        }
+
+        function displayGroupedHistory(messages) {
+            if (!messages || messages.length === 0) {
+                resultsArea.innerHTML = "<p style='text-align:center;'>تاریخچه‌ای برای این اطلاعات تماس یافت نشد.</p>";
+                resultsArea.style.display = 'block';
+                return;
+            }
+
+            // Group messages by session_id
+            const sessions = {};
+            messages.forEach(msg => {
+                if (!sessions[msg.session_id]) {
+                    sessions[msg.session_id] = {
+                        messages: [],
+                        // Attempt to find user info from the first user message in this session group
+                        userName: msg.role === 'user' && msg.user_name_provided ? msg.user_name_provided : null,
+                        userContact: msg.role === 'user' && msg.user_contact_provided ? msg.user_contact_provided : null,
+                    };
+                }
+                sessions[msg.session_id].messages.push(msg);
+                // Update user info if found later in the session (though unlikely with current save logic)
+                if (!sessions[msg.session_id].userName && msg.role === 'user' && msg.user_name_provided) {
+                    sessions[msg.session_id].userName = msg.user_name_provided;
+                }
+                if (!sessions[msg.session_id].userContact && msg.role === 'user' && msg.user_contact_provided) {
+                    sessions[msg.session_id].userContact = msg.user_contact_provided;
+                }
+            });
+
+            resultsArea.innerHTML = ''; // Clear
+            Object.keys(sessions).forEach(sessionId => {
+                const sessionData = sessions[sessionId];
+                const sessionGroupDiv = document.createElement('div');
+                sessionGroupDiv.className = 'session-group';
+
+                let sessionTitle = `گفتگو با شناسه: ${sessionId}`;
+                if (sessionData.userName || sessionData.userContact) {
+                    sessionTitle += ` (کاربر: ${sessionData.userName || ''} ${sessionData.userContact || ''})`;
+                }
+                sessionGroupDiv.innerHTML = `<h3>${sessionTitle} - <a href="/chat-view/?session=${sessionId}" target="_blank" style="font-size:0.8em; color: #7dd3fc;">مشاهده کامل</a></h3>`;
+
+                sessionData.messages.forEach(msg => {
+                    const msgDiv = document.createElement('div');
+                    msgDiv.classList.add('message', msg.role);
+                    const contentDiv = document.createElement('div');
+                    if (msg.role === 'bot') {
+                        contentDiv.innerHTML = md.render(msg.content);
+                    } else {
+                        contentDiv.textContent = msg.content;
+                    }
+                    msgDiv.appendChild(contentDiv);
+                    const timeDiv = document.createElement('div');
+                    timeDiv.classList.add('timestamp');
+                    timeDiv.textContent = new Date(msg.timestamp).toLocaleString('fa-IR');
+                    msgDiv.appendChild(timeDiv);
+                    sessionGroupDiv.appendChild(msgDiv);
+                });
+                resultsArea.appendChild(sessionGroupDiv);
+            });
+            resultsArea.style.display = 'block';
+        }
+
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            loadingDiv.style.display = 'none';
+            resultsArea.style.display = 'none';
+        }
+    </script>
+</body>
+
+</html>
