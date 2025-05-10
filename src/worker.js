@@ -164,7 +164,6 @@ async function findSessionIdsByContact(db, contactInfo) {
 	}
 }
 
-
 async function getAllChatHistoryForSessions(db, sessionIds) {
 	if (!sessionIds || sessionIds.length === 0) return [];
 	try {
@@ -1690,6 +1689,37 @@ app.get('/api/get-history/:sessionId', async (c) => {
 	} catch (error) {
 		console.error(`Worker: Error fetching history/user info via API for session ${sessionId}:`, error);
 		return c.json({ error: 'Failed to retrieve chat data.' }, 500);
+	}
+});
+
+app.get('/api/search-history-by-contact/:contactInfo', async (c) => {
+	const db = c.env.DB;
+	const contactInfo = c.req.param('contactInfo');
+
+	if (!contactInfo) {
+		return c.json({ error: 'Contact information (email/phone) is required.' }, 400);
+	}
+	console.log(`Worker: API request to search history by contact: ${contactInfo}`);
+
+	try {
+		// 1. Find all session_ids associated with this contact info
+		const sessionIds = await findSessionIdsByContact(db, contactInfo);
+
+		if (!sessionIds || sessionIds.length === 0) {
+			return c.json({ error: 'No chat history found for this contact information.' }, 404);
+		}
+
+		// 2. Fetch all messages for these session_ids
+		const fullHistory = await getAllChatHistoryForSessions(db, sessionIds);
+
+		// Optional: Fetch latest user info details for each session if you want to display it grouped
+		// For simplicity now, we'll just return the flat list of messages.
+		// The client-side can group by session_id if needed.
+
+		return c.json(fullHistory); // Returns an array of all messages from all found sessions
+	} catch (error) {
+		console.error(`Worker: Error searching history by contact ${contactInfo}:`, error);
+		return c.json({ error: 'Failed to retrieve chat history by contact.' }, 500);
 	}
 });
 // --- Helper Functions ---
