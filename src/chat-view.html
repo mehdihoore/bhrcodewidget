@@ -147,6 +147,18 @@
            background-color: #2563eb; /* Darker blue on hover */
            color: white;
        }
+	    #user-info-display {
+            text-align: right;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #2a2a2a; /* Slightly different dark shade */
+            border-radius: 5px;
+            font-size: 0.9em;
+            color: #ccc;
+        }
+        #user-info-display p {
+            margin: 3px 0;
+        }
 		</style>
 	</head>
 	<body>
@@ -154,6 +166,9 @@
 		<div class="back-button-container">
 			<a href="/bhrcode/" class="back-button">بازگشت به صفحه گفتگو</a>
 			<!-- ^^^ CHANGE "/ai-assistant/" to the correct URL of your main widget page -->
+		</div>
+		<div id="user-info-display" style="display: none;">
+			<!-- User info will be loaded here -->
 		</div>
 		<div id="loading-history">در حال بارگذاری تاریخچه...</div>
 		<div id="error-history"></div>
@@ -165,6 +180,7 @@
 			const historyContainer = document.getElementById('history-container');
 			const loadingDiv = document.getElementById('loading-history');
 			const errorDiv = document.getElementById('error-history');
+			const userInfoDisplayDiv = document.getElementById('user-info-display');
 			// --- DEFINE YOUR WORKER'S BASE URL ---
 			const workerApiBaseUrl = 'https://bhrwidget.aihoore.ir'; // Important! Use your actual worker URL
 			const md = new markdownit({ breaks: true, linkify: true, typographer: true });
@@ -205,6 +221,22 @@
 					loadingDiv.style.display = 'none';
 				}
 			}
+
+			function displayUserInfo(userInfo) {
+					if (!userInfo || (!userInfo.name && !userInfo.contact)) {
+						userInfoDisplayDiv.style.display = 'none';
+						return;
+					}
+					let infoHtml = '<h4>اطلاعات کاربر ارائه شده:</h4>';
+					if (userInfo.name) {
+						infoHtml += `<p><strong>نام:</strong> ${userInfo.name}</p>`;
+					}
+					if (userInfo.contact) {
+						infoHtml += `<p><strong>اطلاعات تماس:</strong> ${userInfo.contact}</p>`;
+					}
+					userInfoDisplayDiv.innerHTML = infoHtml;
+					userInfoDisplayDiv.style.display = 'block';
+				}
 
 			function displayHistory(history) {
 				if (!history || history.length === 0) {

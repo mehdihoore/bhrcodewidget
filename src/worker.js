@@ -84,18 +84,65 @@ async function getAllChatHistory(db, sessionId) {
 	}
 }
 
-async function saveChatMessage(db, sessionId, role, content) {
+async function saveChatMessage(db, sessionId, role, content, userName = null, userContact = null) {
 	if (!sessionId || !role || !content) return false;
 	try {
-		// console.log(`Worker: Saving message for session ${sessionId}, role ${role}`); // Less verbose
-		const stmt = db.prepare(`INSERT INTO chat_history (session_id, role, content) VALUES (?, ?, ?)`).bind(sessionId, role, content);
-		await stmt.run();
+		// Only include user_name and user_contact for 'user' roles and if provided
+		if (role === 'user' && (userName || userContact)) {
+			const stmt = db
+				.prepare(
+					`INSERT INTO chat_history (session_id, role, content, user_name_provided, user_contact_provided)
+                 VALUES (?, ?, ?, ?, ?)`
+				)
+				.bind(sessionId, role, content, userName, userContact);
+			await stmt.run();
+		} else {
+			// For bot messages or user messages without extra info
+			const stmt = db
+				.prepare(
+					`INSERT INTO chat_history (session_id, role, content)
+                 VALUES (?, ?, ?)`
+				)
+				.bind(sessionId, role, content);
+			await stmt.run();
+		}
 		return true;
 	} catch (error) {
 		console.error(`Worker: Error saving chat message for session ${sessionId}:`, error);
 		return false;
 	}
 }
+
+async function getLatestProvidedUserInfo(db, sessionId) {
+	if (!sessionId) return null;
+	try {
+		console.log(`Worker: Fetching latest provided user info for session: ${sessionId}`);
+		// Query for the most recent user message that has either user_name_provided or user_contact_provided
+		const stmt = db
+			.prepare(
+				`SELECT user_name_provided, user_contact_provided
+             FROM chat_history
+             WHERE session_id = ? AND role = 'user' AND (user_name_provided IS NOT NULL OR user_contact_provided IS NOT NULL)
+             ORDER BY timestamp DESC
+             LIMIT 1`
+			)
+			.bind(sessionId);
+
+		const result = await stmt.first(); // Get only the most recent one
+
+		if (result) {
+			return {
+				name: result.user_name_provided,
+				contact: result.user_contact_provided,
+			};
+		}
+		return null; // No info found for this session
+	} catch (error) {
+		console.error(`Worker: Error fetching latest provided user info for session ${sessionId}:`, error);
+		return null;
+	}
+}
+
 const GEMINI_CHAT_KEY_ORDER = ['GEMINI_API_KEY_FREE', 'GEMINI_API_KEY_PAID1', 'GEMINI_API_KEY_128K', 'GEMINI_API_KEY_PAID2'];
 const GEMINI_EMBEDDING_KEY_VAR = 'GEMINI_API_KEY_EMBEDDING'; // Separate key for embedding
 const MAX_TOTAL_ATTEMPTS = 5; // Max tries across *all* keys for a single request
@@ -1515,7 +1562,7 @@ app.post('/api/webchat', async (c) => {
 		const { response: botResponseText, astraResults } = geminiResult.data;
 
 		// Save messages (ensure botResponseText is string)
-		await saveChatMessage(db, sessionId, 'user', text);
+		await saveChatMessage(db, sessionId, 'user', text, userInfo?.name, userInfo?.contact);
 		if (typeof botResponseText === 'string') {
 			await saveChatMessage(db, sessionId, 'bot', botResponseText);
 			console.log(`Worker: Messages saved for session ${sessionId}.`);
@@ -1582,18 +1629,24 @@ app.get('/api/get-history/:sessionId', async (c) => {
 	if (!sessionId) {
 		return c.json({ error: 'Session ID is required.' }, 400);
 	}
-	console.log(`Worker: API request to get history for session: ${sessionId}`);
+	console.log(`Worker: API request to get history & user info for session: ${sessionId}`);
 
 	try {
-		const history = await getAllChatHistory(db, sessionId); // Use the new helper
-		if (!history || history.length === 0) {
-			return c.json({ error: 'Chat history not found or empty.' }, 404);
+		const messages = await getAllChatHistory(db, sessionId); // Gets all messages
+		const userInfo = await getLatestProvidedUserInfo(db, sessionId); // Gets latest provided info
+
+		if ((!messages || messages.length === 0) && !userInfo) {
+			return c.json({ error: 'Chat history and user info not found.' }, 404);
 		}
-		// Return the history array
-		return c.json(history);
+
+		// Return both messages and userInfo
+		return c.json({
+			history: messages || [], // Ensure history is an array even if null
+			userInfo: userInfo, // This will be null if no info was ever provided
+		});
 	} catch (error) {
-		console.error(`Worker: Error fetching history via API for session ${sessionId}:`, error);
-		return c.json({ error: 'Failed to retrieve chat history.' }, 500);
+		console.error(`Worker: Error fetching history/user info via API for session ${sessionId}:`, error);
+		return c.json({ error: 'Failed to retrieve chat data.' }, 500);
 	}
 });
 // --- Helper Functions ---
@@ -1883,10 +1936,12 @@ async function queryGeminiChatWeb(text, searchResults, chatHistory, userInfo, en
 	}
 
 	let userInfoForPrompt = 'کاربر گرامی'; // Default
-	if (userInfo && (userInfo.firstName || userInfo.lastName)) {
-		userInfoForPrompt = `${userInfo.firstName || ''} ${userInfo.lastName || ''}`.trim();
-	} else if (userInfo && userInfo.phone) {
-		userInfoForPrompt = `کاربر با شماره ${userInfo.phone}`; // Example if only phone is provided
+	if (userInfo && (userInfo.name || userInfo.contact)) {
+		// Check if either name or contact exists
+		let namePart = userInfo.name || '';
+		let contactPart = userInfo.contact ? `(${userInfo.contact})` : '';
+		userInfoForPrompt = `${namePart} ${contactPart}`.trim();
+		if (userInfoForPrompt === '()' || !userInfoForPrompt) userInfoForPrompt = 'کاربر گرامی'; // Better fallback
 	}
 	const queryForPrompt = originalQuery || text;
 	// --- Build the Final Prompt (INCLUDING HISTORY) ---
@@ -1936,33 +1991,10 @@ You are AlumGlass, a highly specialized AI assistant providing expert guidance o
 Generate **ONLY** the comprehensive, well-cited, Persian response for the user, following all directives above. Do NOT output your internal thought process, self-review checklist, or comments about the search process for Knowledge Base Documents.
 `;
 	// --- End Prompt Update ---
-	// ---Check for the correct Gemini Web API Key ---
-
-	if (!env.GEMINI_API_KEY_FREE) {
-		// ---Log the correct variable name ---
-		console.error('Widget Worker: GEMINI_API_KEY_FREE not set!');
-		return { response: 'خطای پیکربندی: کلید API چت وب تنظیم نشده است.'};
-	} else if (!env.GEMINI_API_KEY_PAID1) {
-		// ---Log the correct variable name ---
-		console.error('Widget Worker: GEMINI_API_KEY_PAID1 not set!');
-		return { response: 'خطای پیکربندی: کلید API چت وب تنظیم نشده است.' };
-	} else if (!env.GEMINI_API_KEY_PAID2) {
-		// ---Log the correct variable name ---
-		console.error('Widget Worker: GEMINI_API_KEY_PAID2 not set!');
-		return { response: 'خطای پیکربندی: کلید API چت وب تنظیم نشده است.' };
-	} else if (!env.GEMINI_API_KEY_128K) {
-		// ---Log the correct variable name ---
-		console.error('Widget Worker: GEMINI_API_KEY_128K not set!');
-		return { response: 'خطای پیکربندی: کلید API چت وب تنظیم نشده است.' };
-	}
-
-
-
-	// --- End Corrections ---
 
 	const MODEL_NAME = 'gemini-2.5-pro-exp-03-25'; // Use Flash for potentially faster widget response
 	const endpointUrl = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent`;
-	
+
 	const requestBody = { contents: [{ parts: [{ text: prompt }] }], generationConfig: {} };
 
 	console.log('Worker: Calling fetchGeminiWithRetry for chat response...');
